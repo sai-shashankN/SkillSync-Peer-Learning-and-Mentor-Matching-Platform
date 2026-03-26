@@ -1,0 +1,24 @@
+# IDE files
+.idea/
+
+# Frontend dependencies and build artifacts
+frontend/node_modules/
+frontend/dist/
+frontend/*.tsbuildinfo
+
+# Backend build output
+backend/**/target/
+
+# Runtime logs
+runtime-logs/
+backend/runtime-logs/
+*.log
+
+# Local credential notes
+credentials.md
+
+# Planning artifacts
+BLUEPRINT.md
+CHANGES.md
+PLAN.md
+Phase Prompts/

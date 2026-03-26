@@ -1,0 +1,24 @@
+server:
+  port: 8081
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/skillsync_auth
+    username: skillsync
+    password: skillsync
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+jwt:
+  secret: skillsync-jwt-secret-key-for-development-only-change-in-prod-must-be-at-least-256-bits
+  access-token-expiry-ms: 900000
+  refresh-token-expiry-ms: 604800000
+oauth2:
+  google:
+    client-id: google-client-id-placeholder
+  github:
+    client-id: github-client-id-placeholder
+    client-secret: github-client-secret-placeholder

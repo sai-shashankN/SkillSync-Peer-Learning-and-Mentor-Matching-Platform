@@ -1,0 +1,11 @@
+CREATE DATABASE skillsync_auth;
+CREATE DATABASE skillsync_users;
+CREATE DATABASE skillsync_mentors;
+CREATE DATABASE skillsync_skills;
+CREATE DATABASE skillsync_sessions;
+CREATE DATABASE skillsync_payments;
+CREATE DATABASE skillsync_reviews;
+CREATE DATABASE skillsync_groups;
+CREATE DATABASE skillsync_notifications;
+CREATE DATABASE skillsync_audit;
+CREATE DATABASE skillsync_n8n;

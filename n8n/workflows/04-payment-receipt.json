@@ -1,0 +1,104 @@
+{
+  "name": "Payment Receipt",
+  "nodes": [
+    {
+      "id": "1",
+      "name": "Payment Received Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        260,
+        280
+      ],
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "payment-received",
+        "responseMode": "onReceived"
+      }
+    },
+    {
+      "id": "2",
+      "name": "Normalize Payload",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        500,
+        280
+      ],
+      "parameters": {
+        "functionCode": "return items.map((item) => ({ json: item.json.body ?? item.json }));"
+      }
+    },
+    {
+      "id": "3",
+      "name": "Send Receipt Email",
+      "type": "n8n-nodes-base.sendGrid",
+      "typeVersion": 1,
+      "position": [
+        740,
+        280
+      ],
+      "parameters": {
+        "resource": "mail",
+        "operation": "send",
+        "fromEmail": "billing@skillsync.local",
+        "fromName": "SkillSync Billing",
+        "toEmail": "={{ $json.email || 'payer@example.com' }}",
+        "subject": "Payment receipt",
+        "dynamicTemplate": true,
+        "templateId": "SENDGRID_PAYMENT_RECEIPT_TEMPLATE_ID",
+        "dynamicTemplateFields": {
+          "fields": [
+            {
+              "key": "paymentId",
+              "value": "={{ $json.paymentId }}"
+            },
+            {
+              "key": "sessionId",
+              "value": "={{ $json.sessionId }}"
+            },
+            {
+              "key": "amount",
+              "value": "={{ $json.amount }}"
+            }
+          ]
+        },
+        "contentType": "text/plain",
+        "contentValue": "Thanks for your payment."
+      }
+    }
+  ],
+  "connections": {
+    "Payment Received Webhook": {
+      "main": [
+        [
+          {
+            "node": "Normalize Payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Payload": {
+      "main": [
+        [
+          {
+            "node": "Send Receipt Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "tags": [
+    {
+      "name": "skillsync"
+    }
+  ]
+}

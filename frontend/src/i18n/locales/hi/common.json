@@ -1,0 +1,80 @@
+{
+  "app": {
+    "name": "SkillSync",
+    "tagline": "सर्वश्रेष्ठ से सीखें, जो आप जानते हैं वह सिखाएं"
+  },
+  "nav": {
+    "home": "होम",
+    "dashboard": "डैशबोर्ड",
+    "mentors": "मेंटर खोजें",
+    "sessions": "मेरे सत्र",
+    "groups": "समूह",
+    "profile": "प्रोफ़ाइल",
+    "admin": "एडमिन कंसोल",
+    "login": "लॉगिन",
+    "register": "रजिस्टर",
+    "logout": "लॉगआउट",
+    "earnings": "आय",
+    "availability": "उपलब्धता",
+    "users": "उपयोगकर्ता",
+    "payments": "भुगतान",
+    "audit_logs": "ऑडिट लॉग",
+    "analytics": "एनालिटिक्स"
+  },
+  "auth": {
+    "login_title": "वापसी पर स्वागत है",
+    "register_title": "खाता बनाएं",
+    "email": "ईमेल",
+    "password": "पासवर्ड",
+    "name": "पूरा नाम",
+    "login_btn": "साइन इन",
+    "register_btn": "साइन अप",
+    "or_continue_with": "या इसके साथ जारी रखें",
+    "google": "Google",
+    "github": "GitHub",
+    "no_account": "खाता नहीं है?",
+    "has_account": "पहले से खाता है?",
+    "hero_title": "ऐसा स्किल एक्सचेंज जो आपके समय का सम्मान करे",
+    "hero_copy": "मेंटर्स खोजें, सत्र चलाएं, और हर सीखने के ट्रैक को एक ही जगह व्यवस्थित रखें।",
+    "submit_success": "आप साइन इन हो चुके हैं।",
+    "register_success": "खाता सफलतापूर्वक बन गया।",
+    "oauth_redirect": "{{provider}} पर रीडायरेक्ट किया जा रहा है..."
+  },
+  "common": {
+    "loading": "लोड हो रहा है...",
+    "error": "कुछ गलत हो गया",
+    "save": "सहेजें",
+    "cancel": "रद्द करें",
+    "delete": "हटाएं",
+    "edit": "संपादित करें",
+    "search": "खोजें",
+    "no_results": "कोई परिणाम नहीं मिला",
+    "dark_mode": "डार्क मोड",
+    "language": "भाषा",
+    "go_home": "होम पर जाएं",
+    "coming_soon": "और सुविधाएँ जल्द आ रही हैं!",
+    "notifications": "सूचनाएं"
+  },
+  "errors": {
+    "required": "यह फ़ील्ड आवश्यक है",
+    "invalid_email": "अमान्य ईमेल पता",
+    "min_password": "पासवर्ड कम से कम 8 अक्षर का होना चाहिए",
+    "unauthorized": "आप अधिकृत नहीं हैं",
+    "not_found": "पेज नहीं मिला"
+  },
+  "dashboard": {
+    "welcome": "स्वागत है, {{name}}",
+    "total_sessions": "कुल सत्र",
+    "active_groups": "सक्रिय समूह",
+    "badges_earned": "बैज अर्जित"
+  },
+  "layout": {
+    "menu": "मेन्यू",
+    "toggle_theme": "थीम बदलें",
+    "switch_language": "भाषा बदलें",
+    "open_notifications": "सूचनाएं खोलें",
+    "footer_copy": "सहयोगी सीखने के लिए बनाया गया।",
+    "guest": "अतिथि",
+    "logout": "लॉग आउट"
+  }
+}

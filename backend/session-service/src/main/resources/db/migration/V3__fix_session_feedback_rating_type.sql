@@ -1,0 +1,3 @@
+ALTER TABLE session_feedback
+ALTER COLUMN rating TYPE INTEGER
+USING rating::INTEGER;

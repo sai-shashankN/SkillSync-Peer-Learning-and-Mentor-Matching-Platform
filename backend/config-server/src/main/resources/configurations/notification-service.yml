@@ -1,0 +1,26 @@
+server:
+  port: 8089
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/skillsync_notifications
+    username: skillsync
+    password: skillsync
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+
+skillsync:
+  webhooks:
+    enabled: false
+    endpoints:
+      event.user.registered: http://n8n:5678/webhook/user-registered
+      event.mentor.applied: http://n8n:5678/webhook/mentor-applied
+      event.mentor.approved: http://n8n:5678/webhook/mentor-approved
+      event.session.accepted: http://n8n:5678/webhook/session-accepted
+      event.session.completed: http://n8n:5678/webhook/session-completed
+      event.payment.received: http://n8n:5678/webhook/payment-received
+      event.waitlist.slot.open: http://n8n:5678/webhook/waitlist-slot-open

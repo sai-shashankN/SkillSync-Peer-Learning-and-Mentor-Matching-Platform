@@ -1,0 +1,80 @@
+{
+  "app": {
+    "name": "SkillSync",
+    "tagline": "Learn from the best, teach what you know"
+  },
+  "nav": {
+    "home": "Home",
+    "dashboard": "Dashboard",
+    "mentors": "Find Mentors",
+    "sessions": "My Sessions",
+    "groups": "Groups",
+    "profile": "Profile",
+    "admin": "Admin Console",
+    "login": "Login",
+    "register": "Register",
+    "logout": "Logout",
+    "earnings": "Earnings",
+    "availability": "Availability",
+    "users": "Users",
+    "payments": "Payments",
+    "audit_logs": "Audit Logs",
+    "analytics": "Analytics"
+  },
+  "auth": {
+    "login_title": "Welcome Back",
+    "register_title": "Create Account",
+    "email": "Email",
+    "password": "Password",
+    "name": "Full Name",
+    "login_btn": "Sign In",
+    "register_btn": "Sign Up",
+    "or_continue_with": "Or continue with",
+    "google": "Google",
+    "github": "GitHub",
+    "no_account": "Don't have an account?",
+    "has_account": "Already have an account?",
+    "hero_title": "Skill exchange that respects your time",
+    "hero_copy": "Meet mentors, run sessions, and keep every learning track organized in one place.",
+    "submit_success": "You're signed in.",
+    "register_success": "Account created successfully.",
+    "oauth_redirect": "Redirecting to {{provider}}..."
+  },
+  "common": {
+    "loading": "Loading...",
+    "error": "Something went wrong",
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "search": "Search",
+    "no_results": "No results found",
+    "dark_mode": "Dark Mode",
+    "language": "Language",
+    "go_home": "Go Home",
+    "coming_soon": "More features coming soon!",
+    "notifications": "Notifications"
+  },
+  "errors": {
+    "required": "This field is required",
+    "invalid_email": "Invalid email address",
+    "min_password": "Password must be at least 8 characters",
+    "unauthorized": "You are not authorized",
+    "not_found": "Page not found"
+  },
+  "dashboard": {
+    "welcome": "Welcome, {{name}}",
+    "total_sessions": "Total Sessions",
+    "active_groups": "Active Groups",
+    "badges_earned": "Badges Earned"
+  },
+  "layout": {
+    "menu": "Menu",
+    "toggle_theme": "Toggle theme",
+    "switch_language": "Switch language",
+    "open_notifications": "Open notifications",
+    "footer_copy": "Built for collaborative learning.",
+    "guest": "Guest",
+    "logout": "Log out"
+  }
+}

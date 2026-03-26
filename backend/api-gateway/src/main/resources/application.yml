@@ -1,0 +1,73 @@
+server:
+  port: 8091
+
+spring:
+  application:
+    name: api-gateway
+  data:
+    redis:
+      host: localhost
+      port: 6379
+  cloud:
+    gateway:
+      routes:
+        - id: auth-service
+          uri: lb://auth-service
+          predicates:
+            - Path=/auth/**
+        - id: user-service
+          uri: lb://user-service
+          predicates:
+            - Path=/users/**
+        - id: mentor-service
+          uri: lb://mentor-service
+          predicates:
+            - Path=/mentors/**
+        - id: mentor-admin-service
+          uri: lb://mentor-service
+          predicates:
+            - Path=/admin/mentors,/admin/mentors/**
+        - id: skill-service
+          uri: lb://skill-service
+          predicates:
+            - Path=/skills/**
+        - id: session-service
+          uri: lb://session-service
+          predicates:
+            - Path=/sessions/**
+        - id: payment-service
+          uri: lb://payment-service
+          predicates:
+            - Path=/payments/**
+        - id: review-service
+          uri: lb://review-service
+          predicates:
+            - Path=/reviews/**
+        - id: group-service
+          uri: lb://group-service
+          predicates:
+            - Path=/groups/**
+        - id: notification-service
+          uri: lb://notification-service
+          predicates:
+            - Path=/notifications/**
+        - id: audit-service
+          uri: lb://audit-service
+          predicates:
+            - Path=/audit/**
+      redis-rate-limiter:
+        replenish-rate: 100
+        burst-capacity: 200
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka/
+  instance:
+    prefer-ip-address: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus

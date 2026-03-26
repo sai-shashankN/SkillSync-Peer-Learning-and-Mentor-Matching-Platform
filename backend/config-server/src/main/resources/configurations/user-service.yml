@@ -1,0 +1,22 @@
+server:
+  port: 8082
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/skillsync_users
+    username: skillsync
+    password: skillsync
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+  servlet:
+    multipart:
+      max-file-size: 5MB
+      max-request-size: 10MB
+cloudinary:
+  cloud-name: cloudinary-cloud-name-placeholder
+  api-key: cloudinary-api-key-placeholder
+  api-secret: cloudinary-api-secret-placeholder

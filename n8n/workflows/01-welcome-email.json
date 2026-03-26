@@ -1,0 +1,120 @@
+{
+  "name": "Welcome Email",
+  "nodes": [
+    {
+      "id": "1",
+      "name": "User Registered Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        260,
+        280
+      ],
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "user-registered",
+        "responseMode": "onReceived"
+      }
+    },
+    {
+      "id": "2",
+      "name": "Normalize Payload",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        500,
+        280
+      ],
+      "parameters": {
+        "functionCode": "return items.map((item) => ({ json: item.json.body ?? item.json }));"
+      }
+    },
+    {
+      "id": "3",
+      "name": "Deduplicate Event",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        740,
+        280
+      ],
+      "parameters": {
+        "functionCode": "const seen = this.getWorkflowStaticData('global');\nconst output = [];\nfor (const item of items) {\n  const eventId = item.json.base?.eventId;\n  if (!eventId) {\n    output.push(item);\n    continue;\n  }\n  if (seen[eventId]) {\n    continue;\n  }\n  seen[eventId] = true;\n  output.push(item);\n}\nreturn output;"
+      }
+    },
+    {
+      "id": "4",
+      "name": "Send Welcome Email",
+      "type": "n8n-nodes-base.sendGrid",
+      "typeVersion": 1,
+      "position": [
+        980,
+        280
+      ],
+      "parameters": {
+        "resource": "mail",
+        "operation": "send",
+        "fromEmail": "noreply@skillsync.local",
+        "fromName": "SkillSync",
+        "toEmail": "={{ $json.email }}",
+        "subject": "Welcome to SkillSync",
+        "dynamicTemplate": true,
+        "templateId": "SENDGRID_WELCOME_TEMPLATE_ID",
+        "dynamicTemplateFields": {
+          "fields": [
+            {
+              "key": "name",
+              "value": "={{ $json.name }}"
+            }
+          ]
+        },
+        "contentType": "text/plain",
+        "contentValue": "Welcome to SkillSync"
+      }
+    }
+  ],
+  "connections": {
+    "User Registered Webhook": {
+      "main": [
+        [
+          {
+            "node": "Normalize Payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Payload": {
+      "main": [
+        [
+          {
+            "node": "Deduplicate Event",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Deduplicate Event": {
+      "main": [
+        [
+          {
+            "node": "Send Welcome Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "tags": [
+    {
+      "name": "skillsync"
+    }
+  ]
+}

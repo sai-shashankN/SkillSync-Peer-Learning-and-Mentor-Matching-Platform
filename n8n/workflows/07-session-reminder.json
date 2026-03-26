@@ -1,0 +1,244 @@
+{
+  "name": "Session Reminder",
+  "nodes": [
+    {
+      "id": "1",
+      "name": "Every 30 Minutes",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        180,
+        320
+      ],
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 30
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "2",
+      "name": "Fetch Upcoming Sessions",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        420,
+        320
+      ],
+      "parameters": {
+        "method": "GET",
+        "url": "http://session-service:8085/sessions/internal/upcoming?withinMinutes=60"
+      }
+    },
+    {
+      "id": "3",
+      "name": "Expand Sessions",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        660,
+        320
+      ],
+      "parameters": {
+        "functionCode": "const sessions = $json.data ?? [];\nreturn sessions.map((session) => ({ json: session }));"
+      }
+    },
+    {
+      "id": "4",
+      "name": "Deduplicate Reminders",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        900,
+        320
+      ],
+      "parameters": {
+        "functionCode": "const seen = this.getWorkflowStaticData('global');\nconst output = [];\nfor (const item of items) {\n  const reminderKey = `session-reminder:${item.json.id}:${item.json.startAt}`;\n  if (seen[reminderKey]) {\n    continue;\n  }\n  seen[reminderKey] = true;\n  output.push(item);\n}\nreturn output;"
+      }
+    },
+    {
+      "id": "5",
+      "name": "Split In Batches",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        1140,
+        320
+      ],
+      "parameters": {
+        "batchSize": 1
+      }
+    },
+    {
+      "id": "6",
+      "name": "Fetch Mentor User",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1380,
+        240
+      ],
+      "parameters": {
+        "method": "GET",
+        "url": "=http://user-service:8082/users/internal/{{$json.mentorId}}"
+      }
+    },
+    {
+      "id": "7",
+      "name": "Fetch Learner User",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1620,
+        240
+      ],
+      "parameters": {
+        "method": "GET",
+        "url": "=http://user-service:8082/users/internal/{{$node['Split In Batches'].json.learnerId}}"
+      }
+    },
+    {
+      "id": "8",
+      "name": "Send Reminder Email",
+      "type": "n8n-nodes-base.sendGrid",
+      "typeVersion": 1,
+      "position": [
+        1860,
+        240
+      ],
+      "parameters": {
+        "resource": "mail",
+        "operation": "send",
+        "fromEmail": "noreply@skillsync.local",
+        "fromName": "SkillSync",
+        "toEmail": "={{ $node['Fetch Mentor User'].json.data.email + ',' + $node['Fetch Learner User'].json.data.email }}",
+        "subject": "Upcoming SkillSync session reminder",
+        "dynamicTemplate": true,
+        "templateId": "SENDGRID_SESSION_REMINDER_TEMPLATE_ID",
+        "dynamicTemplateFields": {
+          "fields": [
+            {
+              "key": "sessionId",
+              "value": "={{ $node['Split In Batches'].json.id }}"
+            },
+            {
+              "key": "startAt",
+              "value": "={{ $node['Split In Batches'].json.startAt }}"
+            },
+            {
+              "key": "zoomLink",
+              "value": "={{ $node['Split In Batches'].json.zoomLink }}"
+            }
+          ]
+        },
+        "contentType": "text/plain",
+        "contentValue": "Your SkillSync session starts within the next hour."
+      }
+    }
+  ],
+  "connections": {
+    "Every 30 Minutes": {
+      "main": [
+        [
+          {
+            "node": "Fetch Upcoming Sessions",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Upcoming Sessions": {
+      "main": [
+        [
+          {
+            "node": "Expand Sessions",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Expand Sessions": {
+      "main": [
+        [
+          {
+            "node": "Deduplicate Reminders",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Deduplicate Reminders": {
+      "main": [
+        [
+          {
+            "node": "Split In Batches",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split In Batches": {
+      "main": [
+        [
+          {
+            "node": "Fetch Mentor User",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Fetch Mentor User": {
+      "main": [
+        [
+          {
+            "node": "Fetch Learner User",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Learner User": {
+      "main": [
+        [
+          {
+            "node": "Send Reminder Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Reminder Email": {
+      "main": [
+        [
+          {
+            "node": "Split In Batches",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "tags": [
+    {
+      "name": "skillsync"
+    }
+  ]
+}
