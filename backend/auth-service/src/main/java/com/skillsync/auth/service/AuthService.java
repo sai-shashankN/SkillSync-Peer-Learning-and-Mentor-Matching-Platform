@@ -2,6 +2,7 @@ package com.skillsync.auth.service;
 
 import com.skillsync.auth.config.JwtProperties;
 import com.skillsync.auth.dto.AuthResponse;
+import com.skillsync.auth.dto.InternalUserSummaryResponse;
 import com.skillsync.auth.dto.LoginRequest;
 import com.skillsync.auth.dto.RegisterRequest;
 import com.skillsync.auth.dto.UserPrincipal;
@@ -147,6 +148,21 @@ public class AuthService {
                 .name(claims.get("name", String.class))
                 .roles((List<String>) claims.get("roles", List.class))
                 .permissions((List<String>) claims.get("permissions", List.class))
+                .build();
+    }
+
+    @Transactional(readOnly = true)
+    public InternalUserSummaryResponse getInternalUserSummary(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User", "id", userId));
+
+        return InternalUserSummaryResponse.builder()
+                .userId(user.getId())
+                .email(user.getEmail())
+                .name(user.getName())
+                .roles(authMapper.extractRoles(user))
+                .active(user.isActive())
+                .createdAt(user.getCreatedAt())
                 .build();
     }
 

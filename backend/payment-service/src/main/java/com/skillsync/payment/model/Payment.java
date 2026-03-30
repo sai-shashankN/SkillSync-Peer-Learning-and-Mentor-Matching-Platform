@@ -49,14 +49,18 @@ public class Payment {
     @Column(name = "idempotency_key", nullable = false, unique = true, length = 100)
     private String idempotencyKey;
 
-    @Column(name = "razorpay_order_id", unique = true, length = 255)
-    private String razorpayOrderId;
+    @Builder.Default
+    @Column(nullable = false, length = 30)
+    private String provider = "PAYPAL";
 
-    @Column(name = "razorpay_payment_id", unique = true, length = 255)
-    private String razorpayPaymentId;
+    @Column(name = "provider_order_id", unique = true, length = 255)
+    private String providerOrderId;
 
-    @Column(name = "razorpay_signature", length = 500)
-    private String razorpaySignature;
+    @Column(name = "provider_payment_id", unique = true, length = 255)
+    private String providerPaymentId;
+
+    @Column(name = "provider_signature", length = 500)
+    private String providerSignature;
 
     @Builder.Default
     @Column(name = "captured_amount", nullable = false, precision = 10, scale = 2)

@@ -1,100 +1,94 @@
 {
-  "name": "Waitlist Notification",
-  "nodes": [
-    {
-      "id": "1",
-      "name": "Waitlist Slot Open Webhook",
-      "type": "n8n-nodes-base.webhook",
-      "typeVersion": 2.1,
-      "position": [
-        260,
-        280
-      ],
-      "parameters": {
-        "httpMethod": "POST",
-        "path": "waitlist-slot-open",
-        "responseMode": "onReceived"
-      }
-    },
-    {
-      "id": "2",
-      "name": "Normalize Payload",
-      "type": "n8n-nodes-base.function",
-      "typeVersion": 1,
-      "position": [
-        500,
-        280
-      ],
-      "parameters": {
-        "functionCode": "return items.map((item) => ({ json: item.json.body ?? item.json }));"
-      }
-    },
-    {
-      "id": "3",
-      "name": "Send Waitlist Email",
-      "type": "n8n-nodes-base.sendGrid",
-      "typeVersion": 1,
-      "position": [
-        740,
-        280
-      ],
-      "parameters": {
-        "resource": "mail",
-        "operation": "send",
-        "fromEmail": "noreply@skillsync.local",
-        "fromName": "SkillSync",
-        "toEmail": "={{ $json.email || 'learner@example.com' }}",
-        "subject": "A mentor slot is now open",
-        "dynamicTemplate": true,
-        "templateId": "SENDGRID_WAITLIST_SLOT_OPEN_TEMPLATE_ID",
-        "dynamicTemplateFields": {
-          "fields": [
-            {
-              "key": "mentorId",
-              "value": "={{ $json.mentorId }}"
-            },
-            {
-              "key": "learnerId",
-              "value": "={{ $json.learnerId }}"
+    "name": "Waitlist Notification",
+    "nodes": [
+        {
+            "id": "1",
+            "name": "Waitlist Slot Open Webhook",
+            "type": "n8n-nodes-base.webhook",
+            "typeVersion": 2.1,
+            "position": [
+                260,
+                280
+            ],
+            "parameters": {
+                "httpMethod": "POST",
+                "path": "waitlist-slot-open",
+                "responseMode": "onReceived"
             }
-          ]
         },
-        "contentType": "text/plain",
-        "contentValue": "A mentor you were waiting for is available."
-      }
-    }
-  ],
-  "connections": {
-    "Waitlist Slot Open Webhook": {
-      "main": [
-        [
-          {
-            "node": "Normalize Payload",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
+        {
+            "id": "2",
+            "name": "Normalize Payload",
+            "type": "n8n-nodes-base.function",
+            "typeVersion": 1,
+            "position": [
+                500,
+                280
+            ],
+            "parameters": {
+                "functionCode": "return items.map((item) => ({ json: item.json.body ?? item.json }));"
+            }
+        },
+        {
+            "id": "3",
+            "name": "Send Waitlist Email",
+            "type": "n8n-nodes-resend.resend",
+            "typeVersion": 1,
+            "position": [
+                740,
+                280
+            ],
+            "parameters": {
+                "resource": "email",
+                "operation": "send",
+                "from": "SkillSync <noreply@saishashank.dev>",
+                "to": "={{$json.email || $json.learnerEmail || \"learner@example.com\"}}",
+                "subject": "A mentor slot is now available",
+                "useTemplate": false,
+                "emailFormat": "both",
+                "html": "={{`<div><h1>Good news</h1><p>A mentor slot you were waiting for is now available on SkillSync.</p><p>Please return to the app to book it before someone else does.</p></div>`}}",
+                "text": "={{`A mentor slot you were waiting for is now available on SkillSync. Please return to the app to book it before someone else does.`}}",
+                "additionalOptions": {}
+            },
+            "credentials": {
+                "resendApi": {
+                    "id": "YAify4P98jQAJrnR",
+                    "name": "SkillSync Resend API"
+                }
+            }
+        }
+    ],
+    "connections": {
+        "Waitlist Slot Open Webhook": {
+            "main": [
+                [
+                    {
+                        "node": "Normalize Payload",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Normalize Payload": {
+            "main": [
+                [
+                    {
+                        "node": "Send Waitlist Email",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        }
     },
-    "Normalize Payload": {
-      "main": [
-        [
-          {
-            "node": "Send Waitlist Email",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    }
-  },
-  "active": false,
-  "settings": {
-    "executionOrder": "v1"
-  },
-  "tags": [
-    {
-      "name": "skillsync"
-    }
-  ]
+    "active": false,
+    "settings": {
+        "executionOrder": "v1"
+    },
+    "tags": [
+        {
+            "name": "skillsync"
+        }
+    ]
 }

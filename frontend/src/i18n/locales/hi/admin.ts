@@ -40,7 +40,7 @@ const adminHi = {
     rate_label: 'रेट',
     applied_label: 'आवेदन तिथि',
     session_id: 'सेशन आईडी',
-    razorpay_order_id: 'रेजरपे ऑर्डर आईडी',
+    provider_order_id: 'प्रोवाइडर ऑर्डर आईडी',
     refund: 'रिफंड',
     refund_reason: 'रिफंड का कारण',
     refund_confirm: 'रिफंड की पुष्टि करें',

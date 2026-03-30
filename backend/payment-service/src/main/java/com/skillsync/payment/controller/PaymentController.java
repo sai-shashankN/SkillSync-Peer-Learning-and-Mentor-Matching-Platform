@@ -70,12 +70,11 @@ public class PaymentController {
         return ResponseEntity.ok(ApiResponse.ok("Payment verified successfully", response));
     }
 
-    @PostMapping("/webhooks/razorpay")
+    @PostMapping("/webhooks/paypal")
     public ResponseEntity<ApiResponse<Void>> processWebhook(
-            @RequestHeader("X-Razorpay-Signature") String signature,
             @RequestBody String payload
     ) {
-        paymentService.processWebhook(payload, signature);
+        paymentService.processWebhook(payload);
         return ResponseEntity.ok(ApiResponse.ok("Webhook processed successfully", null));
     }
 

@@ -48,6 +48,18 @@ public class AdminUserController {
         return ResponseEntity.ok(response);
     }
 
+    @GetMapping("/{id}")
+    public ResponseEntity<ApiResponse<UserSummaryResponse>> getUserById(
+            HttpServletRequest request,
+            @PathVariable Long id
+    ) {
+        requireAdminRole(request);
+        return ResponseEntity.ok(ApiResponse.ok(
+                "User fetched successfully",
+                adminUserService.getUserById(id)
+        ));
+    }
+
     @PatchMapping("/{id}/ban")
     public ResponseEntity<ApiResponse<UserStatusResponse>> banUser(
             HttpServletRequest request,

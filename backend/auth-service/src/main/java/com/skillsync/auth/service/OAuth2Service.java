@@ -78,7 +78,8 @@ public class OAuth2Service {
         String audience = String.valueOf(tokenInfo.getOrDefault("aud", ""));
         if (StringUtils.hasText(oAuth2Properties.getGoogle().getClientId())
                 && !oAuth2Properties.getGoogle().getClientId().equals(audience)) {
-            throw new UnauthorizedException("Google token audience is invalid");
+            LOGGER.error("Google token audience mismatch! Expected: {}, Actual: {}", oAuth2Properties.getGoogle().getClientId(), audience);
+            throw new UnauthorizedException("Google token audience is invalid: expected " + oAuth2Properties.getGoogle().getClientId() + ", got " + audience);
         }
 
         UserResolution resolution = resolveSocialUser(email, name, providerId, GOOGLE_PROVIDER);

@@ -12,8 +12,8 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class PaymentInitiateResponse {
 
-    private String razorpayOrderId;
+    private String orderId;
     private BigDecimal amount;
     private String currency;
-    private String razorpayKeyId;
+    private String clientId;
 }

@@ -14,7 +14,9 @@ public class MessageResponse {
 
     private Long id;
     private Long groupId;
-    private Long userId;
+    private Long senderId;
+    private String senderName;
     private String content;
     private Instant createdAt;
+    private Boolean isDeleted;
 }

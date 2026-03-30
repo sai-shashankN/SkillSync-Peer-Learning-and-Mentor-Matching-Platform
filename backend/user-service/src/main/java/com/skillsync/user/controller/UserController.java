@@ -12,6 +12,7 @@ import com.skillsync.user.dto.UpdatePreferencesRequest;
 import com.skillsync.user.dto.UpdateProfileRequest;
 import com.skillsync.user.dto.UserProfileResponse;
 import com.skillsync.user.dto.UserSkillResponse;
+import com.skillsync.user.dto.UserSummaryResponse;
 import com.skillsync.user.service.AvatarService;
 import com.skillsync.user.service.PreferencesService;
 import com.skillsync.user.service.ProfileService;
@@ -69,6 +70,12 @@ public class UserController {
                 extractRoles(request)
         );
         return ResponseEntity.ok(ApiResponse.ok("Profile fetched successfully", response));
+    }
+
+    @GetMapping("/internal/{id}")
+    public ResponseEntity<ApiResponse<UserSummaryResponse>> getInternalUserById(@PathVariable Long id) {
+        UserSummaryResponse response = profileService.getInternalUserSummary(id);
+        return ResponseEntity.ok(ApiResponse.ok("Internal user fetched successfully", response));
     }
 
     @PutMapping("/me")

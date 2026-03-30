@@ -128,6 +128,7 @@ public class GroupController {
         MessageResponse response = messageService.sendMessage(
                 id,
                 RequestHeaderUtils.extractUserId(request),
+                RequestHeaderUtils.extractUserName(request),
                 messageRequest
         );
         return ResponseEntity.ok(ApiResponse.ok("Message sent successfully", response));

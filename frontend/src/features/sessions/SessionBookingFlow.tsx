@@ -1,11 +1,11 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { addDays, format, set } from 'date-fns';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import toast from 'react-hot-toast';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Badge, Button, Card, Input } from '../../components/ui';
-import { useRazorpay } from '../../hooks';
+import { usePayPal } from '../../hooks';
 import { getApiErrorMessage } from '../../lib/utils';
 import type { AvailabilitySlot } from '../../services/mentorService';
 import { mentorService } from '../../services/mentorService';
@@ -85,11 +85,15 @@ function getSlotsForDate(slots: AvailabilitySlot[], selectedDate: Date | null) {
     }));
 }
 
+function createIdempotencyKey(prefix: string) {
+  return globalThis.crypto?.randomUUID?.() ?? `${prefix}-${Date.now()}`;
+}
+
 export default function SessionBookingFlow() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { openCheckout } = useRazorpay();
+  const { renderButtons } = usePayPal();
   const { id } = useParams();
   const mentorId = Number(id);
   const [currentStep, setCurrentStep] = useState(0);
@@ -99,6 +103,8 @@ export default function SessionBookingFlow() {
   const [topic, setTopic] = useState('');
   const [notes, setNotes] = useState('');
   const [sessionSummary, setSessionSummary] = useState<SessionSummary | null>(null);
+  const [paymentInitIdempotencyKey, setPaymentInitIdempotencyKey] = useState<string | null>(null);
+  const paypalButtonsRef = useRef<HTMLDivElement | null>(null);
 
   const mentorQuery = useQuery({
     queryKey: ['mentor', mentorId],
@@ -155,6 +161,7 @@ export default function SessionBookingFlow() {
     },
     onSuccess: (session) => {
       setSessionSummary(session);
+      setPaymentInitIdempotencyKey(createIdempotencyKey('payment-init'));
       setCurrentStep(3);
     },
     onError: (error) => {
@@ -162,44 +169,38 @@ export default function SessionBookingFlow() {
     },
   });
 
-  const payMutation = useMutation({
-    mutationFn: async () => {
+  const paymentInitQuery = useQuery({
+    queryKey: ['payment-init', sessionSummary?.id, paymentInitIdempotencyKey],
+    enabled:
+      currentStep === 3 && sessionSummary !== null && paymentInitIdempotencyKey !== null,
+    retry: false,
+    queryFn: async () => {
+      if (!sessionSummary || !paymentInitIdempotencyKey) {
+        throw new Error(t('common.error'));
+      }
+
+      return (
+        await paymentService.initiate(
+          { sessionId: sessionSummary.id },
+          paymentInitIdempotencyKey,
+        )
+      ).data.data;
+    },
+  });
+
+  const capturePaymentMutation = useMutation({
+    mutationFn: async (orderId: string) => {
       if (!sessionSummary) {
         throw new Error(t('common.error'));
       }
 
-      const paymentInit = (
-        await paymentService.initiate(
-          { sessionId: sessionSummary.id, amount: sessionSummary.amount },
-          `payment-init-${crypto.randomUUID()}`,
-        )
-      ).data.data;
-
-      await new Promise<void>((resolve, reject) => {
-        void openCheckout({
-          orderId: paymentInit.razorpayOrderId,
-          amount: paymentInit.amount,
-          keyId: paymentInit.keyId,
-          onSuccess: async (response) => {
-            try {
-              await paymentService.verify(
-                {
-                  razorpayOrderId: response.razorpay_order_id,
-                  razorpayPaymentId: response.razorpay_payment_id,
-                  razorpaySignature: response.razorpay_signature,
-                },
-                `payment-verify-${crypto.randomUUID()}`,
-              );
-              resolve();
-            } catch (error) {
-              reject(error);
-            }
-          },
-          onCancel: () => {
-            reject(new Error(t('sessions.payment_cancelled')));
-          },
-        }).catch((error) => reject(error));
-      });
+      await paymentService.verify(
+        {
+          sessionId: sessionSummary.id,
+          orderId,
+        },
+        createIdempotencyKey('payment-verify'),
+      );
     },
     onSuccess: async () => {
       toast.success(t('sessions.confirmation_title'));
@@ -213,6 +214,58 @@ export default function SessionBookingFlow() {
       toast.error(getApiErrorMessage(error, t('sessions.payment_failed')));
     },
   });
+
+  useEffect(() => {
+    const container = paypalButtonsRef.current;
+    if (!container || !sessionSummary || currentStep !== 3 || !paymentInitQuery.data) {
+      return;
+    }
+
+    let isActive = true;
+    let cleanup: (() => Promise<void>) | undefined;
+
+    void renderButtons(container, {
+      clientId: paymentInitQuery.data.clientId,
+      currency: paymentInitQuery.data.currency,
+      orderId: paymentInitQuery.data.orderId,
+      onApprove: async (orderId) => {
+        await capturePaymentMutation.mutateAsync(orderId);
+      },
+      onCancel: () => {
+        if (isActive) {
+          toast.error(t('sessions.payment_cancelled'));
+        }
+      },
+      onError: (error) => {
+        if (isActive) {
+          toast.error(getApiErrorMessage(error, t('sessions.payment_failed')));
+        }
+      },
+    })
+      .then((dispose) => {
+        cleanup = dispose;
+      })
+      .catch((error) => {
+        if (isActive) {
+          toast.error(getApiErrorMessage(error, t('sessions.payment_failed')));
+        }
+      });
+
+    return () => {
+      isActive = false;
+      if (cleanup) {
+        void cleanup();
+      }
+    };
+  }, [
+    currentStep,
+    paymentInitQuery.data?.clientId,
+    paymentInitQuery.data?.currency,
+    paymentInitQuery.data?.orderId,
+    renderButtons,
+    sessionSummary?.id,
+    t,
+  ]);
 
   const stepLabels = [
     t('sessions.step_date'),
@@ -395,6 +448,27 @@ export default function SessionBookingFlow() {
               <Badge variant="info" className="normal-case tracking-normal">
                 {mentorQuery.data.name}
               </Badge>
+              <div className="rounded-3xl border border-slate-200/70 p-4 dark:border-slate-800">
+                <p className="text-sm text-slate-500 dark:text-slate-400">
+                  {t('sessions.payment_provider_note')}
+                </p>
+                {paymentInitQuery.isLoading ? (
+                  <p className="mt-3 text-sm text-slate-600 dark:text-slate-300">
+                    {t('sessions.payment_loading')}
+                  </p>
+                ) : null}
+                {paymentInitQuery.isError ? (
+                  <p className="mt-3 text-sm text-red-500">
+                    {getApiErrorMessage(paymentInitQuery.error, t('sessions.payment_failed'))}
+                  </p>
+                ) : null}
+                {capturePaymentMutation.isPending ? (
+                  <p className="mt-3 text-sm text-slate-600 dark:text-slate-300">
+                    {t('sessions.payment_verifying')}
+                  </p>
+                ) : null}
+                <div ref={paypalButtonsRef} className="mt-4 min-h-12" />
+              </div>
             </div>
           ) : null}
 
@@ -417,7 +491,7 @@ export default function SessionBookingFlow() {
           <Button
             variant="outline"
             onClick={() => setCurrentStep((current) => Math.max(0, current - 1))}
-            disabled={currentStep === 0 || payMutation.isPending}
+            disabled={currentStep === 0 || capturePaymentMutation.isPending}
           >
             {t('common.previous')}
           </Button>
@@ -448,11 +522,6 @@ export default function SessionBookingFlow() {
             </Button>
           ) : null}
 
-          {currentStep === 3 ? (
-            <Button isLoading={payMutation.isPending} onClick={() => payMutation.mutate()}>
-              {t('sessions.pay_now')}
-            </Button>
-          ) : null}
         </div>
       </Card>
     </div>

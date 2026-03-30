@@ -30,7 +30,8 @@ function createIdempotencyKey(prefix: string) {
 
 function getPaymentTextClass(status?: string | null) {
   switch (status?.toUpperCase()) {
-    case 'COMPLETED':
+    case 'CAPTURED':
+    case 'PARTIALLY_REFUNDED':
     case 'PAID':
       return 'text-emerald-600 dark:text-emerald-300';
     case 'PENDING':

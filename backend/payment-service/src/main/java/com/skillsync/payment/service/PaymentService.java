@@ -9,7 +9,7 @@ import com.skillsync.common.exception.ResourceNotFoundException;
 import com.skillsync.common.exception.UnauthorizedException;
 import com.skillsync.payment.client.SessionClient;
 import com.skillsync.payment.client.SessionClient.SessionSnapshot;
-import com.skillsync.payment.config.RazorpayConfig;
+import com.skillsync.payment.config.PayPalConfig;
 import com.skillsync.payment.dto.InitiatePaymentRequest;
 import com.skillsync.payment.dto.PaymentInitiateResponse;
 import com.skillsync.payment.dto.PaymentResponse;
@@ -29,10 +29,10 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Instant;
 import java.util.List;
-import org.springframework.data.jpa.domain.Specification;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -41,12 +41,14 @@ import org.springframework.util.StringUtils;
 @RequiredArgsConstructor
 public class PaymentService {
 
+    private static final String PAYPAL_PROVIDER = "PAYPAL";
+
     private final PaymentRepository paymentRepository;
     private final PaymentRefundRepository paymentRefundRepository;
     private final PaymentWebhookEventRepository webhookEventRepository;
     private final PaymentMapper paymentMapper;
-    private final RazorpayService razorpayService;
-    private final RazorpayConfig razorpayConfig;
+    private final PayPalService payPalService;
+    private final PayPalConfig payPalConfig;
     private final SessionClient sessionClient;
     private final EventPublisherService eventPublisherService;
     private final EarningsService earningsService;
@@ -54,11 +56,9 @@ public class PaymentService {
 
     @Transactional
     public PaymentInitiateResponse initiatePayment(Long payerId, InitiatePaymentRequest request, String idempotencyKey) {
-        if (!StringUtils.hasText(idempotencyKey)) {
-            throw new BadRequestException("Idempotency-Key header is required");
-        }
+        String normalizedIdempotencyKey = requireIdempotencyKey(idempotencyKey);
 
-        Payment existing = paymentRepository.findByIdempotencyKey(idempotencyKey.trim()).orElse(null);
+        Payment existing = paymentRepository.findByIdempotencyKey(normalizedIdempotencyKey).orElse(null);
         if (existing != null) {
             if (!existing.getPayerId().equals(payerId)) {
                 throw new ConflictException("Idempotency key is already associated with another payer");
@@ -77,17 +77,22 @@ public class PaymentService {
             throw new BadRequestException("Session is not eligible for payment");
         }
 
-        String receipt = buildReceipt(request.getSessionId(), request.getHoldId(), idempotencyKey.trim());
-        RazorpayService.RazorpayOrderResult order = razorpayService.createOrder(session.amount(), "INR", receipt);
+        String receipt = buildReceipt(request.getSessionId(), request.getHoldId(), normalizedIdempotencyKey);
+        PayPalService.PayPalOrderResult order = payPalService.createOrder(
+                session.amount(),
+                payPalConfig.getCurrency(),
+                receipt
+        );
 
         Payment payment = Payment.builder()
                 .sessionId(request.getSessionId())
                 .payerId(payerId)
                 .payeeId(session.mentorId())
                 .amount(normalize(session.amount()))
-                .currency("INR")
-                .idempotencyKey(idempotencyKey.trim())
-                .razorpayOrderId(order.razorpayOrderId())
+                .currency(payPalConfig.getCurrency())
+                .idempotencyKey(normalizedIdempotencyKey)
+                .provider(PAYPAL_PROVIDER)
+                .providerOrderId(order.orderId())
                 .providerReceipt(receipt)
                 .providerStatus(order.providerStatus())
                 .status(PaymentStatus.INITIATED)
@@ -98,9 +103,7 @@ public class PaymentService {
 
     @Transactional
     public PaymentVerifyResponse verifyPayment(Long payerId, VerifyPaymentRequest request, String idempotencyKey) {
-        if (!StringUtils.hasText(idempotencyKey)) {
-            throw new BadRequestException("Idempotency-Key header is required");
-        }
+        String normalizedIdempotencyKey = requireIdempotencyKey(idempotencyKey);
 
         Payment existingCaptured = paymentRepository.findBySessionIdAndStatusIn(
                 request.getSessionId(),
@@ -113,8 +116,8 @@ public class PaymentService {
             return buildVerifyResponse(existingCaptured);
         }
 
-        Payment payment = paymentRepository.findByRazorpayOrderId(request.getRazorpayOrderId())
-                .orElseThrow(() -> new ResourceNotFoundException("Payment", "razorpayOrderId", request.getRazorpayOrderId()));
+        Payment payment = paymentRepository.findByProviderOrderId(request.getOrderId())
+                .orElseThrow(() -> new ResourceNotFoundException("Payment", "orderId", request.getOrderId()));
         if (!payment.getPayerId().equals(payerId)) {
             throw new UnauthorizedException("You are not allowed to verify this payment");
         }
@@ -122,26 +125,22 @@ public class PaymentService {
             throw new BadRequestException("Payment does not belong to this session");
         }
 
-        boolean validSignature = razorpayService.verifySignature(
-                request.getRazorpayOrderId(),
-                request.getRazorpayPaymentId(),
-                request.getRazorpaySignature()
-        );
-        if (!validSignature) {
+        PayPalService.PayPalCaptureResult capture = payPalService.captureOrder(request.getOrderId(), normalizedIdempotencyKey);
+        if (!StringUtils.hasText(capture.captureId()) || !"COMPLETED".equalsIgnoreCase(capture.status())) {
             payment.setStatus(PaymentStatus.FAILED);
-            payment.setProviderStatus("signature_failed");
-            payment.setFailureMessage("Invalid Razorpay signature");
+            payment.setProviderStatus(capture.status());
+            payment.setFailureMessage("PayPal order capture did not complete successfully");
             paymentRepository.save(payment);
             sessionClient.markPaymentFailed(request.getSessionId());
-            throw new BadRequestException("Invalid payment signature");
+            throw new BadRequestException("Unable to capture PayPal payment");
         }
 
         payment.setStatus(PaymentStatus.CAPTURED);
-        payment.setRazorpayPaymentId(request.getRazorpayPaymentId());
-        payment.setRazorpaySignature(request.getRazorpaySignature());
-        payment.setCapturedAmount(normalize(payment.getAmount()));
+        payment.setProviderPaymentId(capture.captureId());
+        payment.setProviderSignature(request.getOrderId());
+        payment.setCapturedAmount(normalize(capture.amount() != null ? capture.amount() : payment.getAmount()));
         payment.setCapturedAt(Instant.now());
-        payment.setProviderStatus("captured");
+        payment.setProviderStatus(capture.status());
         Payment savedPayment = paymentRepository.save(payment);
 
         sessionClient.markSessionPaid(request.getSessionId());
@@ -151,9 +150,7 @@ public class PaymentService {
     }
 
     @Transactional
-    public void processWebhook(String payload, String signature) {
-        razorpayService.verifyWebhookSignature(payload, signature);
-
+    public void processWebhook(String payload) {
         PaymentWebhookEvent webhookEvent = null;
         try {
             JsonNode root = objectMapper.readTree(payload);
@@ -164,7 +161,7 @@ public class PaymentService {
 
             webhookEvent = webhookEventRepository.save(PaymentWebhookEvent.builder()
                     .providerEventId(providerEventId)
-                    .eventType(root.path("event").asText("unknown"))
+                    .eventType(root.path("event_type").asText("unknown"))
                     .payloadJson(payload)
                     .processingStatus("PENDING")
                     .build());
@@ -194,7 +191,12 @@ public class PaymentService {
             throw new BadRequestException("Payment cannot be refunded in its current state");
         }
 
-        BigDecimal refundAmount = normalize(request.getAmount());
+        BigDecimal remainingRefundable = payment.getCapturedAmount().subtract(payment.getRefundedAmount()).max(BigDecimal.ZERO.setScale(2));
+        BigDecimal refundAmount = request.getAmount() == null ? remainingRefundable : normalize(request.getAmount());
+        if (refundAmount.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new BadRequestException("No refundable balance remains for this payment");
+        }
+
         BigDecimal totalRefunded = payment.getRefundedAmount().add(refundAmount);
         if (totalRefunded.compareTo(payment.getCapturedAmount()) > 0) {
             throw new BadRequestException("Refund amount exceeds captured amount");
@@ -210,14 +212,21 @@ public class PaymentService {
                 .build();
         PaymentRefund savedRefund = paymentRefundRepository.save(refund);
 
-        String providerRefundId = razorpayService.initiateRefund(payment.getRazorpayPaymentId(), refundAmount);
-        savedRefund.setProviderRefundId(providerRefundId);
-        savedRefund.setStatus(RefundStatus.COMPLETED);
+        PayPalService.PayPalRefundResult refundResult = payPalService.refundCapture(
+                payment.getProviderPaymentId(),
+                refundAmount,
+                request.getReason()
+        );
+        savedRefund.setProviderRefundId(refundResult.refundId());
+        savedRefund.setStatus("COMPLETED".equalsIgnoreCase(refundResult.status())
+                ? RefundStatus.COMPLETED
+                : RefundStatus.PROCESSING);
         savedRefund.setProcessedAt(Instant.now());
         paymentRefundRepository.save(savedRefund);
 
         payment.setRefundedAmount(totalRefunded);
         payment.setRefundedAt(Instant.now());
+        payment.setProviderStatus(refundResult.status());
         payment.setStatus(totalRefunded.compareTo(payment.getCapturedAmount()) == 0
                 ? PaymentStatus.REFUNDED
                 : PaymentStatus.PARTIALLY_REFUNDED);
@@ -249,25 +258,24 @@ public class PaymentService {
     }
 
     private void handleWebhookEvent(JsonNode root) {
-        String eventType = root.path("event").asText("");
+        String eventType = root.path("event_type").asText("");
         switch (eventType) {
-            case "payment.captured" -> handlePaymentCaptured(root);
-            case "payment.failed" -> handlePaymentFailed(root);
-            case "refund.processed" -> handleRefundProcessed(root);
+            case "PAYMENT.CAPTURE.COMPLETED" -> handlePaymentCaptured(root);
+            case "PAYMENT.CAPTURE.DENIED", "PAYMENT.CAPTURE.DECLINED" -> handlePaymentFailed(root);
             default -> {
-                // No-op for unsupported event types in this phase.
+                // Webhooks are optional for the local PayPal Sandbox demo flow.
             }
         }
     }
 
     private void handlePaymentCaptured(JsonNode root) {
-        JsonNode paymentEntity = root.path("payload").path("payment").path("entity");
-        String orderId = paymentEntity.path("order_id").asText(null);
+        JsonNode resource = root.path("resource");
+        String orderId = resource.path("supplementary_data").path("related_ids").path("order_id").asText(null);
         if (!StringUtils.hasText(orderId)) {
             return;
         }
 
-        paymentRepository.findByRazorpayOrderId(orderId).ifPresent(payment -> {
+        paymentRepository.findByProviderOrderId(orderId).ifPresent(payment -> {
             if (payment.getStatus() == PaymentStatus.CAPTURED
                     || payment.getStatus() == PaymentStatus.PARTIALLY_REFUNDED
                     || payment.getStatus() == PaymentStatus.REFUNDED) {
@@ -275,10 +283,10 @@ public class PaymentService {
             }
 
             payment.setStatus(PaymentStatus.CAPTURED);
-            payment.setRazorpayPaymentId(paymentEntity.path("id").asText(null));
-            payment.setCapturedAmount(normalize(fromPaise(paymentEntity.path("amount").asLong(0L))));
+            payment.setProviderPaymentId(resource.path("id").asText(null));
+            payment.setCapturedAmount(normalize(parseWebhookAmount(resource.path("amount"))));
             payment.setCapturedAt(Instant.now());
-            payment.setProviderStatus("captured");
+            payment.setProviderStatus(resource.path("status").asText("COMPLETED"));
             Payment savedPayment = paymentRepository.save(payment);
 
             sessionClient.markSessionPaid(savedPayment.getSessionId());
@@ -288,48 +296,28 @@ public class PaymentService {
     }
 
     private void handlePaymentFailed(JsonNode root) {
-        JsonNode paymentEntity = root.path("payload").path("payment").path("entity");
-        String orderId = paymentEntity.path("order_id").asText(null);
+        JsonNode resource = root.path("resource");
+        String orderId = resource.path("supplementary_data").path("related_ids").path("order_id").asText(null);
         if (!StringUtils.hasText(orderId)) {
             return;
         }
 
-        paymentRepository.findByRazorpayOrderId(orderId).ifPresent(payment -> {
+        paymentRepository.findByProviderOrderId(orderId).ifPresent(payment -> {
             payment.setStatus(PaymentStatus.FAILED);
-            payment.setProviderStatus(paymentEntity.path("status").asText("failed"));
-            payment.setFailureCode(paymentEntity.path("error_code").asText(null));
-            payment.setFailureMessage(paymentEntity.path("error_description").asText("Payment failed"));
+            payment.setProviderStatus(resource.path("status").asText("FAILED"));
+            payment.setFailureCode(root.path("event_type").asText(null));
+            payment.setFailureMessage("PayPal capture failed");
             paymentRepository.save(payment);
             sessionClient.markPaymentFailed(payment.getSessionId());
         });
     }
 
-    private void handleRefundProcessed(JsonNode root) {
-        JsonNode refundEntity = root.path("payload").path("refund").path("entity");
-        String paymentId = refundEntity.path("payment_id").asText(null);
-        if (!StringUtils.hasText(paymentId)) {
-            return;
-        }
-
-        paymentRepository.findByRazorpayPaymentId(paymentId).ifPresent(payment -> {
-            BigDecimal refundAmount = normalize(fromPaise(refundEntity.path("amount").asLong(0L)));
-            BigDecimal totalRefunded = payment.getRefundedAmount().add(refundAmount).min(payment.getCapturedAmount());
-            payment.setRefundedAmount(totalRefunded);
-            payment.setRefundedAt(Instant.now());
-            payment.setStatus(totalRefunded.compareTo(payment.getCapturedAmount()) == 0
-                    ? PaymentStatus.REFUNDED
-                    : PaymentStatus.PARTIALLY_REFUNDED);
-            payment.setProviderStatus("refund_processed");
-            paymentRepository.save(payment);
-        });
-    }
-
     private PaymentInitiateResponse buildInitiateResponse(Payment payment) {
         return PaymentInitiateResponse.builder()
-                .razorpayOrderId(payment.getRazorpayOrderId())
+                .orderId(payment.getProviderOrderId())
                 .amount(payment.getAmount())
                 .currency(payment.getCurrency())
-                .razorpayKeyId(razorpayConfig.getKeyId())
+                .clientId(payPalService.getClientId())
                 .build();
     }
 
@@ -385,19 +373,34 @@ public class PaymentService {
             return root.get("id").asText();
         }
 
-        String eventType = root.path("event").asText("unknown");
-        String primaryEntityId = root.path("payload").path("payment").path("entity").path("id").asText(null);
+        String eventType = root.path("event_type").asText("unknown");
+        String primaryEntityId = root.path("resource").path("id").asText(null);
         if (!StringUtils.hasText(primaryEntityId)) {
-            primaryEntityId = root.path("payload").path("refund").path("entity").path("id").asText("na");
+            primaryEntityId = root.path("resource")
+                    .path("supplementary_data")
+                    .path("related_ids")
+                    .path("order_id")
+                    .asText("na");
         }
-        return eventType + "-" + primaryEntityId + "-" + root.path("created_at").asText("0");
+        return eventType + "-" + primaryEntityId + "-" + root.path("create_time").asText("0");
+    }
+
+    private String requireIdempotencyKey(String idempotencyKey) {
+        if (!StringUtils.hasText(idempotencyKey)) {
+            throw new BadRequestException("Idempotency-Key header is required");
+        }
+        return idempotencyKey.trim();
     }
 
     private BigDecimal normalize(BigDecimal amount) {
         return amount.setScale(2, RoundingMode.HALF_UP);
     }
 
-    private BigDecimal fromPaise(long paise) {
-        return BigDecimal.valueOf(paise).movePointLeft(2).setScale(2, RoundingMode.HALF_UP);
+    private BigDecimal parseWebhookAmount(JsonNode amountNode) {
+        String value = amountNode.path("value").asText(null);
+        if (!StringUtils.hasText(value)) {
+            return BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
+        }
+        return new BigDecimal(value).setScale(2, RoundingMode.HALF_UP);
     }
 }

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Chrome, Github } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
@@ -21,6 +21,41 @@ interface RedirectState {
   from?: {
     pathname?: string;
   };
+}
+
+let googleIdentityScriptPromise: Promise<void> | null = null;
+
+function loadGoogleIdentityScript() {
+  if (window.google?.accounts?.id) {
+    return Promise.resolve();
+  }
+
+  googleIdentityScriptPromise ??= new Promise<void>((resolve, reject) => {
+    const existingScript = document.querySelector<HTMLScriptElement>(
+      'script[data-google-identity-services="true"]',
+    );
+
+    if (existingScript) {
+      existingScript.addEventListener('load', () => resolve(), { once: true });
+      existingScript.addEventListener(
+        'error',
+        () => reject(new Error('Unable to load Google sign-in.')),
+        { once: true },
+      );
+      return;
+    }
+
+    const script = document.createElement('script');
+    script.src = 'https://accounts.google.com/gsi/client';
+    script.async = true;
+    script.defer = true;
+    script.dataset.googleIdentityServices = 'true';
+    script.onload = () => resolve();
+    script.onerror = () => reject(new Error('Unable to load Google sign-in.'));
+    document.body.appendChild(script);
+  });
+
+  return googleIdentityScriptPromise;
 }
 
 function validate(values: LoginFormState, t: (key: string) => string): LoginFormErrors {
@@ -50,13 +85,107 @@ export default function LoginPage() {
   const [values, setValues] = useState<LoginFormState>({ email: '', password: '' });
   const [errors, setErrors] = useState<LoginFormErrors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isGoogleReady, setIsGoogleReady] = useState(false);
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  const [googleInitError, setGoogleInitError] = useState<string | null>(null);
+  const googleButtonRef = useRef<HTMLDivElement | null>(null);
   const redirectPath = (location.state as RedirectState | null)?.from?.pathname ?? '/dashboard';
-
+  const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID?.trim() ?? '';
+  const githubClientId = import.meta.env.VITE_GITHUB_CLIENT_ID?.trim() ?? '';
   useEffect(() => {
     if (isAuthenticated) {
       navigate('/dashboard', { replace: true });
     }
   }, [isAuthenticated, navigate]);
+
+  const completeLogin = (accessToken: string, user: Parameters<typeof loginSuccess>[1]) => {
+    loginSuccess(accessToken, user);
+    toast.success(t('auth.submit_success'));
+    navigate(redirectPath, { replace: true });
+  };
+
+  useEffect(() => {
+    let isActive = true;
+
+    const initializeGoogleSignIn = async () => {
+      if (!googleClientId) {
+        setGoogleInitError('Google sign-in is not configured.');
+        setIsGoogleReady(false);
+        return;
+      }
+
+      setIsGoogleLoading(true);
+      setGoogleInitError(null);
+
+      try {
+        await loadGoogleIdentityScript();
+
+        if (!isActive) {
+          return;
+        }
+
+        const google = window.google?.accounts?.id;
+        const buttonContainer = googleButtonRef.current;
+
+        if (!google || !buttonContainer) {
+          throw new Error('Google sign-in is unavailable.');
+        }
+
+        google.initialize({
+          client_id: googleClientId,
+          callback: async (response: GoogleCredentialResponse) => {
+            if (!response.credential) {
+              toast.error('Google did not return a valid sign-in token.');
+              return;
+            }
+
+            setIsSubmitting(true);
+
+            try {
+              const { data } = await authService.googleLogin(response.credential);
+              completeLogin(data.data.accessToken, data.data.user);
+            } catch (error) {
+              toast.error(getApiErrorMessage(error, 'Unable to sign in with Google.'));
+            } finally {
+              setIsSubmitting(false);
+            }
+          },
+        });
+
+        buttonContainer.replaceChildren();
+        google.renderButton(buttonContainer, {
+          theme: 'outline',
+          size: 'large',
+          text: 'continue_with',
+          shape: 'pill',
+          width: buttonContainer.offsetWidth || 240,
+        });
+
+        setIsGoogleReady(true);
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : 'Unable to initialize Google sign-in.';
+
+        if (!isActive) {
+          return;
+        }
+
+        setGoogleInitError(message);
+        setIsGoogleReady(false);
+        toast.error(message);
+      } finally {
+        if (isActive) {
+          setIsGoogleLoading(false);
+        }
+      }
+    };
+
+    void initializeGoogleSignIn();
+
+    return () => {
+      isActive = false;
+    };
+  }, [googleClientId]);
 
   const handleChange = (field: keyof LoginFormState, value: string) => {
     setValues((current) => ({ ...current, [field]: value }));
@@ -76,9 +205,7 @@ export default function LoginPage() {
 
     try {
       const { data } = await authService.login(values);
-      loginSuccess(data.data.accessToken, data.data.user);
-      toast.success(t('auth.submit_success'));
-      navigate(redirectPath, { replace: true });
+      completeLogin(data.data.accessToken, data.data.user);
     } catch (error) {
       toast.error(getApiErrorMessage(error, t('common.error')));
     } finally {
@@ -86,9 +213,18 @@ export default function LoginPage() {
     }
   };
 
-  const handleOAuthRedirect = (provider: 'google' | 'github') => {
-    toast(t('auth.oauth_redirect', { provider: t(`auth.${provider}`) }));
-    window.location.href = `/api/auth/oauth2/authorization/${provider}`;
+  const handleGoogleUnavailable = () => {
+    toast.error(googleInitError ?? 'Unable to initialize Google sign-in.');
+  };
+
+  const handleGithubRedirect = () => {
+    if (!githubClientId) {
+      toast.error('GitHub sign-in is not configured.');
+      return;
+    }
+    toast(t('auth.oauth_redirect', { provider: t('auth.github') }));
+    const redirectUri = encodeURIComponent(`${window.location.origin}/auth/github/callback`);
+    window.location.href = `https://github.com/login/oauth/authorize?client_id=${githubClientId}&redirect_uri=${redirectUri}&scope=read:user user:email`;
   };
 
   return (
@@ -143,22 +279,36 @@ export default function LoginPage() {
         </div>
 
         <div className="grid gap-3 sm:grid-cols-2">
+          <div className="relative min-h-12">
+            <div
+              className={`absolute inset-0 flex items-center justify-center rounded-[var(--radius-pill)] border border-slate-300 bg-white/80 px-3 transition-opacity dark:border-slate-700 dark:bg-slate-900/70 ${
+                isGoogleReady ? 'opacity-100' : 'pointer-events-none opacity-0'
+              }`}
+            >
+              <div className="w-full" ref={googleButtonRef} />
+            </div>
+
+            {!isGoogleReady ? (
+              <Button
+                type="button"
+                variant="outline"
+                size="lg"
+                className="w-full"
+                isLoading={isGoogleLoading}
+                onClick={handleGoogleUnavailable}
+              >
+                <Chrome className="size-4" />
+                {t('auth.google')}
+              </Button>
+            ) : null}
+          </div>
           <Button
             type="button"
-            variant="outline"
+            className="w-full bg-[#24292e] text-white hover:bg-[#1b1f23] border border-[#24292e] dark:bg-white dark:text-[#24292e] dark:hover:bg-gray-100 hover:text-white dark:hover:text-[#24292e] transition duration-200"
             size="lg"
-            onClick={() => handleOAuthRedirect('google')}
+            onClick={handleGithubRedirect}
           >
-            <Chrome className="size-4" />
-            {t('auth.google')}
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            size="lg"
-            onClick={() => handleOAuthRedirect('github')}
-          >
-            <Github className="size-4" />
+            <Github className="size-5" />
             {t('auth.github')}
           </Button>
         </div>

@@ -1,2 +1,2 @@
 export { usePagination } from './usePagination';
-export { useRazorpay } from './useRazorpay';
+export { usePayPal } from './usePayPal';

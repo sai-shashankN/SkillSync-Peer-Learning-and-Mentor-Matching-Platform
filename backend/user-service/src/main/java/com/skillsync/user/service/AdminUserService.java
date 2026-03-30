@@ -42,6 +42,11 @@ public class AdminUserService {
                 .build();
     }
 
+    @Transactional(readOnly = true)
+    public UserSummaryResponse getUserById(Long userId) {
+        return profileService.getInternalUserSummary(userId);
+    }
+
     @Transactional
     public UserStatusResponse banUser(Long userId) {
         Profile profile = profileService.getRequiredProfile(userId);

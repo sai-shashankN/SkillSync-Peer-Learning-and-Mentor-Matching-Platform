@@ -11,6 +11,10 @@ import { useAuthStore } from '../../store/authStore';
 import { groupService } from '../../services/groupService';
 import { skillService } from '../../services/skillService';
 
+function getSenderName(senderId: number, senderName?: string) {
+  return senderName?.trim() ? senderName : `User #${senderId}`;
+}
+
 export default function GroupDetailPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -55,7 +59,7 @@ export default function GroupDetailPage() {
     memberMap.set(groupQuery.data.creatorId, `${t('groups.creator')} #${groupQuery.data.creatorId}`);
   }
   sortedMessages.forEach((item) => {
-    memberMap.set(item.senderId, item.senderName);
+    memberMap.set(item.senderId, getSenderName(item.senderId, item.senderName));
   });
   const participants = Array.from(memberMap.entries()).map(([memberId, memberName]) => ({
     memberId,
@@ -209,7 +213,9 @@ export default function GroupDetailPage() {
                 >
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
-                      <p className="font-semibold text-slate-950 dark:text-white">{item.senderName}</p>
+                      <p className="font-semibold text-slate-950 dark:text-white">
+                        {getSenderName(item.senderId, item.senderName)}
+                      </p>
                       <p className="text-xs text-slate-500 dark:text-slate-400">
                         {format(new Date(item.createdAt), 'dd MMM yyyy, hh:mm a')}
                       </p>

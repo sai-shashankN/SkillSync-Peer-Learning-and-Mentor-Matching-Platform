@@ -2,6 +2,7 @@ package com.skillsync.user.mapper;
 
 import com.skillsync.user.dto.PreferencesResponse;
 import com.skillsync.user.dto.RewardTransactionResponse;
+import com.skillsync.user.dto.AuthUserSummaryResponse;
 import com.skillsync.user.dto.UserProfileResponse;
 import com.skillsync.user.dto.UserSkillResponse;
 import com.skillsync.user.dto.UserSummaryResponse;
@@ -59,6 +60,18 @@ public interface UserMapper {
                 .roles(List.of())
                 .isActive(profile.getDeletedAt() == null)
                 .createdAt(profile.getCreatedAt())
+                .build();
+    }
+
+    default UserSummaryResponse toUserSummaryResponse(Profile profile, AuthUserSummaryResponse authUser) {
+        return UserSummaryResponse.builder()
+                .userId(profile.getUserId())
+                .email(authUser.getEmail())
+                .name(authUser.getName())
+                .avatarUrl(profile.getAvatarUrl())
+                .roles(authUser.getRoles())
+                .isActive(authUser.isActive() && profile.getDeletedAt() == null)
+                .createdAt(authUser.getCreatedAt())
                 .build();
     }
 }

@@ -37,6 +37,16 @@ public final class RequestHeaderUtils {
                 .toList();
     }
 
+    public static String extractUserName(HttpServletRequest request) {
+        String userNameHeader = request.getHeader("X-User-Name");
+        if (!StringUtils.hasText(userNameHeader)) {
+            Long userId = extractUserId(request);
+            return "User #" + userId;
+        }
+
+        return userNameHeader.trim();
+    }
+
     public static boolean hasAdminRole(HttpServletRequest request) {
         return extractRoles(request).stream()
                 .anyMatch(role -> "ADMIN".equalsIgnoreCase(role) || "ROLE_ADMIN".equalsIgnoreCase(role));

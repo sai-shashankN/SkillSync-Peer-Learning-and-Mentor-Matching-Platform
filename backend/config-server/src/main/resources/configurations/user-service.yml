@@ -20,3 +20,6 @@ cloudinary:
   cloud-name: cloudinary-cloud-name-placeholder
   api-key: cloudinary-api-key-placeholder
   api-secret: cloudinary-api-secret-placeholder
+services:
+  auth:
+    base-url: http://localhost:8081

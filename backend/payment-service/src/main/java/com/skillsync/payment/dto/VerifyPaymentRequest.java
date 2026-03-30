@@ -17,11 +17,5 @@ public class VerifyPaymentRequest {
     private Long sessionId;
 
     @NotBlank
-    private String razorpayOrderId;
-
-    @NotBlank
-    private String razorpayPaymentId;
-
-    @NotBlank
-    private String razorpaySignature;
+    private String orderId;
 }

@@ -21,8 +21,9 @@ public class PaymentResponse {
     private BigDecimal amount;
     private String currency;
     private PaymentStatus status;
-    private String razorpayOrderId;
-    private String razorpayPaymentId;
+    private String provider;
+    private String providerOrderId;
+    private String providerPaymentId;
     private BigDecimal capturedAmount;
     private BigDecimal refundedAmount;
     private Instant capturedAt;

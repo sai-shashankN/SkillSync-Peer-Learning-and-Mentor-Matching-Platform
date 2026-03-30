@@ -4,6 +4,7 @@ import com.skillsync.auth.config.JwtProperties;
 import com.skillsync.auth.dto.AuthResponse;
 import com.skillsync.auth.dto.GitHubOAuth2Request;
 import com.skillsync.auth.dto.GoogleOAuth2Request;
+import com.skillsync.auth.dto.InternalUserSummaryResponse;
 import com.skillsync.auth.dto.LoginRequest;
 import com.skillsync.auth.dto.RegisterRequest;
 import com.skillsync.auth.dto.UserPrincipal;
@@ -21,6 +22,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.CookieValue;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
@@ -157,6 +159,12 @@ public class AuthController {
         return ResponseEntity.ok(ApiResponse.ok("Token is valid", principal));
     }
 
+    @GetMapping("/internal/users/{id}")
+    public ResponseEntity<ApiResponse<InternalUserSummaryResponse>> getInternalUserById(@PathVariable Long id) {
+        InternalUserSummaryResponse response = authService.getInternalUserSummary(id);
+        return ResponseEntity.ok(ApiResponse.ok("Internal user fetched successfully", response));
+    }
+
     private void validateCookieBasedRequest(String refreshToken) {
         if (!StringUtils.hasText(refreshToken)) {
             throw new BadRequestException("Refresh token cookie is required");
@@ -175,7 +183,7 @@ public class AuthController {
                 .httpOnly(true)
                 .secure(refreshCookieSecure)
                 .sameSite("Strict")
-                .path("/auth")
+                .path("/")
                 .maxAge(jwtProperties.getRefreshTokenExpiryMs() / 1000)
                 .build();
     }
@@ -185,7 +193,7 @@ public class AuthController {
                 .httpOnly(true)
                 .secure(refreshCookieSecure)
                 .sameSite("Strict")
-                .path("/auth")
+                .path("/")
                 .maxAge(0)
                 .build();
     }

@@ -4,10 +4,8 @@ import com.skillsync.group.dto.GroupDetailResponse;
 import com.skillsync.group.dto.GroupMemberResponse;
 import com.skillsync.group.dto.GroupResponse;
 import com.skillsync.group.dto.GroupSummaryResponse;
-import com.skillsync.group.dto.MessageResponse;
 import com.skillsync.group.model.Group;
 import com.skillsync.group.model.GroupMember;
-import com.skillsync.group.model.GroupMessage;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 
@@ -25,6 +23,4 @@ public interface GroupMapper {
     GroupDetailResponse toGroupDetailResponse(Group group);
 
     GroupMemberResponse toGroupMemberResponse(GroupMember member);
-
-    MessageResponse toMessageResponse(GroupMessage message);
 }

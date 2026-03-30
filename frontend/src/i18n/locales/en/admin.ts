@@ -40,7 +40,7 @@ const adminEn = {
     rate_label: 'Rate',
     applied_label: 'Applied',
     session_id: 'Session ID',
-    razorpay_order_id: 'Razorpay Order ID',
+    provider_order_id: 'Provider Order ID',
     refund: 'Refund',
     refund_reason: 'Refund reason',
     refund_confirm: 'Confirm refund',

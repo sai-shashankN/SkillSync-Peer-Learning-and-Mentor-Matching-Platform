@@ -18,7 +18,7 @@ jwt:
   refresh-token-expiry-ms: 604800000
 oauth2:
   google:
-    client-id: google-client-id-placeholder
+    client-id: 272230001389-v9b7bkthiupbl1rm4nffq06gm3crrs9u.apps.googleusercontent.com
   github:
-    client-id: github-client-id-placeholder
-    client-secret: github-client-secret-placeholder
+    client-id: Ov23li8rLtI3EurhRc27
+    client-secret: db95dde234803cae3953a6b4428223c7ebe6a37d

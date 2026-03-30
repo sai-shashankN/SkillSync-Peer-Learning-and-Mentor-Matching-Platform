@@ -31,6 +31,9 @@ public class GroupMessage {
     @Column(name = "user_id", nullable = false)
     private Long userId;
 
+    @Column(name = "sender_name", nullable = false, length = 100)
+    private String senderName;
+
     @Column(nullable = false, columnDefinition = "TEXT")
     private String content;
 

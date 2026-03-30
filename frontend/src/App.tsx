@@ -13,6 +13,7 @@ import './i18n';
 
 const LoginPage = lazy(() => import('./features/auth/LoginPage'));
 const RegisterPage = lazy(() => import('./features/auth/RegisterPage'));
+const GithubCallbackPage = lazy(() => import('./features/auth/GithubCallbackPage'));
 const DashboardRouter = lazy(() => import('./features/dashboard/DashboardRouter'));
 const UserManagementPage = lazy(() => import('./features/admin/UserManagementPage'));
 const MentorApprovalPage = lazy(() => import('./features/admin/MentorApprovalPage'));
@@ -102,6 +103,7 @@ function App() {
           <Routes>
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register" element={<RegisterPage />} />
+            <Route path="/auth/github/callback" element={<GithubCallbackPage />} />
 
             <Route element={<AppShell />}>
               <Route

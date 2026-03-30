@@ -1,132 +1,94 @@
 {
-  "name": "Admin Alert Mentor Applied",
-  "nodes": [
-    {
-      "id": "1",
-      "name": "Mentor Applied Webhook",
-      "type": "n8n-nodes-base.webhook",
-      "typeVersion": 2.1,
-      "position": [
-        260,
-        280
-      ],
-      "parameters": {
-        "httpMethod": "POST",
-        "path": "mentor-applied",
-        "responseMode": "onReceived"
-      }
-    },
-    {
-      "id": "2",
-      "name": "Normalize Payload",
-      "type": "n8n-nodes-base.function",
-      "typeVersion": 1,
-      "position": [
-        500,
-        280
-      ],
-      "parameters": {
-        "functionCode": "return items.map((item) => ({ json: item.json.body ?? item.json }));"
-      }
-    },
-    {
-      "id": "3",
-      "name": "Post Admin Slack Alert",
-      "type": "n8n-nodes-base.slack",
-      "typeVersion": 2.4,
-      "position": [
-        740,
-        220
-      ],
-      "parameters": {
-        "resource": "message",
-        "operation": "post",
-        "select": "channel",
-        "channelId": {
-          "mode": "id",
-          "value": "admin-alerts"
-        },
-        "messageType": "text",
-        "text": "={{ 'New mentor application received for user ' + $json.userId + ' and mentor profile ' + ($json.mentorId || 'pending') }}"
-      }
-    },
-    {
-      "id": "4",
-      "name": "Email Admin Team",
-      "type": "n8n-nodes-base.sendGrid",
-      "typeVersion": 1,
-      "position": [
-        980,
-        220
-      ],
-      "parameters": {
-        "resource": "mail",
-        "operation": "send",
-        "fromEmail": "alerts@skillsync.local",
-        "fromName": "SkillSync Alerts",
-        "toEmail": "admin@skillsync.local",
-        "subject": "New mentor application",
-        "dynamicTemplate": true,
-        "templateId": "SENDGRID_ADMIN_MENTOR_APPLIED_TEMPLATE_ID",
-        "dynamicTemplateFields": {
-          "fields": [
-            {
-              "key": "userId",
-              "value": "={{ $json.userId }}"
-            },
-            {
-              "key": "mentorId",
-              "value": "={{ $json.mentorId }}"
+    "name": "Admin Alert Mentor Applied",
+    "nodes": [
+        {
+            "id": "1",
+            "name": "Mentor Applied Webhook",
+            "type": "n8n-nodes-base.webhook",
+            "typeVersion": 2.1,
+            "position": [
+                260,
+                280
+            ],
+            "parameters": {
+                "httpMethod": "POST",
+                "path": "mentor-applied",
+                "responseMode": "onReceived"
             }
-          ]
         },
-        "contentType": "text/plain",
-        "contentValue": "A new mentor application needs review."
-      }
-    }
-  ],
-  "connections": {
-    "Mentor Applied Webhook": {
-      "main": [
-        [
-          {
-            "node": "Normalize Payload",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
+        {
+            "id": "2",
+            "name": "Normalize Payload",
+            "type": "n8n-nodes-base.function",
+            "typeVersion": 1,
+            "position": [
+                500,
+                280
+            ],
+            "parameters": {
+                "functionCode": "return items.map((item) => ({ json: item.json.body ?? item.json }));"
+            }
+        },
+        {
+            "id": "4",
+            "name": "Email Admin Team",
+            "type": "n8n-nodes-resend.resend",
+            "typeVersion": 1,
+            "position": [
+                740,
+                220
+            ],
+            "parameters": {
+                "resource": "email",
+                "operation": "send",
+                "from": "SkillSync <noreply@saishashank.dev>",
+                "to": "admin@saishashank.dev,saishashanknarang@gmail.com",
+                "subject": "New mentor application submitted",
+                "useTemplate": false,
+                "emailFormat": "both",
+                "html": "={{`<div><h1>New mentor application</h1><p>A new mentor application has been submitted in SkillSync.</p><p>User ID: ${$json.userId ?? \"N/A\"}</p><p>Mentor ID: ${$json.mentorId ?? \"N/A\"}</p></div>`}}",
+                "text": "={{`A new mentor application has been submitted in SkillSync. User ID: ${$json.userId ?? \"N/A\"}. Mentor ID: ${$json.mentorId ?? \"N/A\"}.`}}",
+                "additionalOptions": {}
+            },
+            "credentials": {
+                "resendApi": {
+                    "id": "YAify4P98jQAJrnR",
+                    "name": "SkillSync Resend API"
+                }
+            }
+        }
+    ],
+    "connections": {
+        "Mentor Applied Webhook": {
+            "main": [
+                [
+                    {
+                        "node": "Normalize Payload",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Normalize Payload": {
+            "main": [
+                [
+                    {
+                        "node": "Email Admin Team",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        }
     },
-    "Normalize Payload": {
-      "main": [
-        [
-          {
-            "node": "Post Admin Slack Alert",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
+    "active": false,
+    "settings": {
+        "executionOrder": "v1"
     },
-    "Post Admin Slack Alert": {
-      "main": [
-        [
-          {
-            "node": "Email Admin Team",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    }
-  },
-  "active": false,
-  "settings": {
-    "executionOrder": "v1"
-  },
-  "tags": [
-    {
-      "name": "skillsync"
-    }
-  ]
+    "tags": [
+        {
+            "name": "skillsync"
+        }
+    ]
 }

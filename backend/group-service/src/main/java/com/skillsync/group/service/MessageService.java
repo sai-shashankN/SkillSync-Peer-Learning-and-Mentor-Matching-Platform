@@ -6,7 +6,6 @@ import com.skillsync.common.exception.ResourceNotFoundException;
 import com.skillsync.common.exception.UnauthorizedException;
 import com.skillsync.group.dto.MessageRequest;
 import com.skillsync.group.dto.MessageResponse;
-import com.skillsync.group.mapper.GroupMapper;
 import com.skillsync.group.model.Group;
 import com.skillsync.group.model.GroupMember;
 import com.skillsync.group.model.GroupMessage;
@@ -15,6 +14,7 @@ import com.skillsync.group.repository.GroupMemberRepository;
 import com.skillsync.group.repository.GroupMessageRepository;
 import java.util.Set;
 import lombok.RequiredArgsConstructor;
+import org.springframework.util.StringUtils;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -27,10 +27,9 @@ public class MessageService {
     private final GroupService groupService;
     private final GroupMemberRepository groupMemberRepository;
     private final GroupMessageRepository groupMessageRepository;
-    private final GroupMapper groupMapper;
 
     @Transactional
-    public MessageResponse sendMessage(Long groupId, Long userId, MessageRequest request) {
+    public MessageResponse sendMessage(Long groupId, Long userId, String senderName, MessageRequest request) {
         Group group = groupService.getRequiredGroup(groupId);
         assertActiveGroup(group);
         requireMembership(groupId, userId);
@@ -38,9 +37,10 @@ public class MessageService {
         GroupMessage message = groupMessageRepository.save(GroupMessage.builder()
                 .groupId(groupId)
                 .userId(userId)
+                .senderName(resolveSenderName(senderName, userId))
                 .content(request.getContent().trim())
                 .build());
-        return groupMapper.toMessageResponse(message);
+        return toMessageResponse(message);
     }
 
     @Transactional(readOnly = true)
@@ -48,7 +48,7 @@ public class MessageService {
         requireMembership(groupId, userId);
         Page<GroupMessage> page = groupMessageRepository.findByGroupIdAndIsDeletedFalse(groupId, pageable);
         return PagedResponse.<MessageResponse>builder()
-                .content(page.getContent().stream().map(groupMapper::toMessageResponse).toList())
+                .content(page.getContent().stream().map(this::toMessageResponse).toList())
                 .page(page.getNumber())
                 .size(page.getSize())
                 .totalElements(page.getTotalElements())
@@ -85,5 +85,25 @@ public class MessageService {
         if (!Boolean.TRUE.equals(group.getIsActive())) {
             throw new BadRequestException("This group is inactive");
         }
+    }
+
+    private MessageResponse toMessageResponse(GroupMessage message) {
+        return MessageResponse.builder()
+                .id(message.getId())
+                .groupId(message.getGroupId())
+                .senderId(message.getUserId())
+                .senderName(resolveSenderName(message.getSenderName(), message.getUserId()))
+                .content(message.getContent())
+                .createdAt(message.getCreatedAt())
+                .isDeleted(Boolean.TRUE.equals(message.getIsDeleted()))
+                .build();
+    }
+
+    private String resolveSenderName(String senderName, Long userId) {
+        if (StringUtils.hasText(senderName)) {
+            return senderName.trim();
+        }
+
+        return "User #" + userId;
     }
 }

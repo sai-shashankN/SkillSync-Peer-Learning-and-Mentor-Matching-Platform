@@ -111,7 +111,7 @@ The production compose profile runs infrastructure, observability, all Spring se
 | Mentor Service | 8083 | Mentor onboarding and discovery |
 | Skill Service | 8084 | Skills catalog and matching |
 | Session Service | 8085 | Session booking and scheduling |
-| Payment Service | 8086 | Razorpay payment workflows |
+| Payment Service | 8086 | PayPal Sandbox payment workflows |
 | Review Service | 8087 | Reviews, ratings, badges |
 | Group Service | 8088 | Peer study groups |
 | Notification Service | 8089 | Notifications and websocket support |
@@ -196,7 +196,7 @@ SkillSync/
 ## Key Features
 
 - Mentor matching based on skill interests and mentor availability
-- Session booking workflows with Razorpay-backed payment integration
+- Session booking workflows with PayPal Sandbox-backed payment integration
 - Peer study groups and collaborative learning flows
 - Review, rating, and badge system for reputation building
 - Admin analytics, approval flows, and audit visibility

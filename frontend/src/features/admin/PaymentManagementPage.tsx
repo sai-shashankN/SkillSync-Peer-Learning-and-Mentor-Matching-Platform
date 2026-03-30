@@ -14,7 +14,7 @@ const currencyFormatter = new Intl.NumberFormat('en-IN', {
   maximumFractionDigits: 0,
 });
 
-const statusOptions = ['ALL', 'INITIATED', 'COMPLETED', 'REFUNDED', 'FAILED'] as const;
+const statusOptions = ['ALL', 'INITIATED', 'CAPTURED', 'PARTIALLY_REFUNDED', 'REFUNDED', 'FAILED'] as const;
 
 function createIdempotencyKey(prefix: string) {
   return globalThis.crypto?.randomUUID?.() ?? `${prefix}-${Date.now()}`;
@@ -22,7 +22,8 @@ function createIdempotencyKey(prefix: string) {
 
 function getPaymentBadgeVariant(status: string): 'success' | 'warning' | 'danger' | 'default' {
   switch (status.toUpperCase()) {
-    case 'COMPLETED':
+    case 'CAPTURED':
+    case 'PARTIALLY_REFUNDED':
       return 'success';
     case 'INITIATED':
       return 'warning';
@@ -124,7 +125,7 @@ export default function PaymentManagementPage() {
                 <th className="pb-3 font-medium">{t('admin.session_id')}</th>
                 <th className="pb-3 font-medium">{t('common.amount')}</th>
                 <th className="pb-3 font-medium">{t('common.status')}</th>
-                <th className="pb-3 font-medium">{t('admin.razorpay_order_id')}</th>
+                <th className="pb-3 font-medium">{t('admin.provider_order_id')}</th>
                 <th className="pb-3 font-medium">{t('common.actions')}</th>
               </tr>
             </thead>
@@ -147,10 +148,10 @@ export default function PaymentManagementPage() {
                     </Badge>
                   </td>
                   <td className="py-3 text-slate-700 dark:text-slate-200">
-                    {payment.razorpayOrderId ?? '-'}
+                    {payment.providerOrderId ?? '-'}
                   </td>
                   <td className="py-3">
-                    {payment.status.toUpperCase() === 'COMPLETED' ? (
+                    {['CAPTURED', 'PARTIALLY_REFUNDED'].includes(payment.status.toUpperCase()) ? (
                       <Button
                         variant="outline"
                         size="sm"

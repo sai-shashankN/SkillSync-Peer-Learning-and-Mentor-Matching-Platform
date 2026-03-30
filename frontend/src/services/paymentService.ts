@@ -4,21 +4,18 @@ import type { ApiResponse, PagedResponse } from '../types';
 
 export interface InitiatePaymentRequest {
   sessionId: number;
-  amount: number;
 }
 
 export interface PaymentInitiateResponse {
   orderId: string;
-  razorpayOrderId: string;
   amount: number;
   currency: string;
-  keyId: string;
+  clientId: string;
 }
 
 export interface VerifyPaymentRequest {
-  razorpayOrderId: string;
-  razorpayPaymentId: string;
-  razorpaySignature: string;
+  sessionId: number;
+  orderId: string;
 }
 
 export interface EarningsResponse {
@@ -33,7 +30,9 @@ export interface PaymentTransaction {
   sessionId: number;
   amount: number;
   status: string;
-  razorpayOrderId: string | null;
+  provider: string;
+  providerOrderId: string | null;
+  providerPaymentId: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -50,7 +49,9 @@ interface RawPaymentTransaction {
   sessionId: number;
   amount?: number | string | null;
   status?: string | null;
-  razorpayOrderId: string | null;
+  provider?: string | null;
+  providerOrderId?: string | null;
+  providerPaymentId?: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -96,7 +97,9 @@ function normalizePaymentTransaction(transaction: RawPaymentTransaction): Paymen
     sessionId: transaction.sessionId,
     amount: toNumber(transaction.amount),
     status: normalizePaymentStatus(transaction.status),
-    razorpayOrderId: transaction.razorpayOrderId,
+    provider: transaction.provider?.trim() || 'UNKNOWN',
+    providerOrderId: transaction.providerOrderId ?? null,
+    providerPaymentId: transaction.providerPaymentId ?? null,
     createdAt: transaction.createdAt,
     updatedAt: transaction.updatedAt,
   };

@@ -15,12 +15,11 @@ spring:
 
 skillsync:
   webhooks:
-    enabled: false
+    enabled: true
     endpoints:
-      event.user.registered: http://n8n:5678/webhook/user-registered
-      event.mentor.applied: http://n8n:5678/webhook/mentor-applied
-      event.mentor.approved: http://n8n:5678/webhook/mentor-approved
-      event.session.accepted: http://n8n:5678/webhook/session-accepted
-      event.session.completed: http://n8n:5678/webhook/session-completed
-      event.payment.received: http://n8n:5678/webhook/payment-received
-      event.waitlist.slot.open: http://n8n:5678/webhook/waitlist-slot-open
+      event.user.registered: http://localhost:5678/webhook/9G4I1mWd1Y0kKGKu/user%20registered%20webhook/user-registered
+      event.mentor.applied: http://localhost:5678/webhook/H2cLzYGPNocM73Ce/mentor%20applied%20webhook/mentor-applied
+      event.mentor.approved: http://localhost:5678/webhook/9tnWJ99f5d97XxQG/mentor%20approved%20webhook/mentor-approved
+      event.session.accepted: http://localhost:5678/webhook/session-accepted
+      event.payment.received: http://localhost:5678/webhook/1n4UB56z5dfuo4zH/payment%20received%20webhook/payment-received
+      event.waitlist.slot.open: http://localhost:5678/webhook/cWqDR5hUswHU3fw6/waitlist%20slot%20open%20webhook/waitlist-slot-open
