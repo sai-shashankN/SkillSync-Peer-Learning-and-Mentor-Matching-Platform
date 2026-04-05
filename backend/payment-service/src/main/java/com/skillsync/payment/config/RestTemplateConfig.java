@@ -13,4 +13,9 @@ public class RestTemplateConfig {
     public RestTemplate restTemplate() {
         return new RestTemplate();
     }
+
+    @Bean(name = "payPalRestTemplate")
+    public RestTemplate payPalRestTemplate() {
+        return new RestTemplate();
+    }
 }

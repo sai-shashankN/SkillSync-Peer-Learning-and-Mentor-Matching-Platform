@@ -1,0 +1,20 @@
+spring:
+  cloud:
+    config:
+      server:
+        fail-on-composite-error: false
+        git:
+          basedir: ${CONFIG_GIT_BASEDIR:${user.home}/.skillsync/config-server-cache/dev}
+        composite:
+          - type: git
+            uri: ${CONFIG_GIT_URI:https://github.com/sai-shashankN/SkillSync-config.git}
+            default-label: ${CONFIG_GIT_LABEL:main}
+            search-paths:
+              - configurations
+            clone-on-start: ${CONFIG_GIT_CLONE_ON_START:true}
+            force-pull: ${CONFIG_GIT_FORCE_PULL:true}
+            timeout: ${CONFIG_GIT_TIMEOUT:10}
+            username: ${CONFIG_GIT_USERNAME:}
+            password: ${CONFIG_GIT_PASSWORD:}
+          - type: native
+            search-locations: classpath:/configurations

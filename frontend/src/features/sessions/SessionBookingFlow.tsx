@@ -24,6 +24,13 @@ const weekdayToIndex: Record<string, number> = {
   SATURDAY: 6,
 };
 
+interface BookingSlot extends AvailabilitySlot {
+  bookingKey: string;
+  startAt: Date;
+  endAt: Date;
+  durationMinutes: number;
+}
+
 function applyTime(date: Date, time: string) {
   const [hours, minutes = '0', seconds = '0'] = time.split(':');
   return set(date, {
@@ -78,11 +85,29 @@ function getSlotsForDate(slots: AvailabilitySlot[], selectedDate: Date | null) {
 
   return slots
     .filter((slot) => weekdayToIndex[slot.dayOfWeek.toUpperCase()] === selectedDate.getDay())
-    .map((slot) => ({
-      ...slot,
-      startAt: applyTime(selectedDate, slot.startTime),
-      endAt: applyTime(selectedDate, slot.endTime),
-    }));
+    .flatMap((slot) => {
+      const availabilityStart = applyTime(selectedDate, slot.startTime);
+      const availabilityEnd = applyTime(selectedDate, slot.endTime);
+      const bookingSlots: BookingSlot[] = [];
+      const durationMinutes = 60;
+      let currentStart = availabilityStart;
+      let segmentIndex = 0;
+
+      while (currentStart.getTime() + durationMinutes * 60000 <= availabilityEnd.getTime()) {
+        const currentEnd = new Date(currentStart.getTime() + durationMinutes * 60000);
+        bookingSlots.push({
+          ...slot,
+          bookingKey: `${slot.id}-${format(currentStart, 'yyyyMMddHHmm')}-${segmentIndex}`,
+          startAt: currentStart,
+          endAt: currentEnd,
+          durationMinutes,
+        });
+        currentStart = currentEnd;
+        segmentIndex += 1;
+      }
+
+      return bookingSlots;
+    });
 }
 
 function createIdempotencyKey(prefix: string) {
@@ -98,7 +123,7 @@ export default function SessionBookingFlow() {
   const mentorId = Number(id);
   const [currentStep, setCurrentStep] = useState(0);
   const [selectedDateKey, setSelectedDateKey] = useState('');
-  const [selectedSlotId, setSelectedSlotId] = useState<number | null>(null);
+  const [selectedSlotKey, setSelectedSlotKey] = useState<string | null>(null);
   const [selectedSkillId, setSelectedSkillId] = useState('');
   const [topic, setTopic] = useState('');
   const [notes, setNotes] = useState('');
@@ -128,7 +153,7 @@ export default function SessionBookingFlow() {
     dateOptions.find((item) => item.key === selectedDateKey)?.value ?? null;
   const slotOptions = getSlotsForDate(availabilityQuery.data ?? [], selectedDate);
 
-  const selectedSlot = slotOptions.find((slot) => slot.id === selectedSlotId) ?? null;
+  const selectedSlot = slotOptions.find((slot) => slot.bookingKey === selectedSlotKey) ?? null;
   const mentorSkillOptions =
     skillsQuery.data?.filter((skill) => mentorQuery.data?.skillIds.includes(skill.id)) ?? [];
   const skillOptions = mentorSkillOptions.length ? mentorSkillOptions : skillsQuery.data ?? [];
@@ -144,7 +169,10 @@ export default function SessionBookingFlow() {
           mentorId,
           skillId: Number(selectedSkillId),
           startAt: selectedSlot.startAt.toISOString(),
-          endAt: selectedSlot.endAt.toISOString(),
+          durationMinutes: Math.max(
+            30,
+            selectedSlot.durationMinutes,
+          ),
         },
         `hold-${crypto.randomUUID()}`,
       );
@@ -324,7 +352,7 @@ export default function SessionBookingFlow() {
                       type="button"
                       onClick={() => {
                         setSelectedDateKey(option.key);
-                        setSelectedSlotId(null);
+                        setSelectedSlotKey(null);
                       }}
                       className={`rounded-3xl border px-4 py-4 text-left transition ${
                         selectedDateKey === option.key
@@ -354,11 +382,11 @@ export default function SessionBookingFlow() {
                 <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                   {slotOptions.map((slot) => (
                     <button
-                      key={slot.id}
+                      key={slot.bookingKey}
                       type="button"
-                      onClick={() => setSelectedSlotId(slot.id)}
+                      onClick={() => setSelectedSlotKey(slot.bookingKey)}
                       className={`rounded-3xl border px-4 py-4 text-left transition ${
-                        selectedSlotId === slot.id
+                        selectedSlotKey === slot.bookingKey
                           ? 'border-blue-200 bg-blue-50 text-[var(--color-primary)] dark:border-blue-900 dark:bg-blue-950/40'
                           : 'border-slate-200 hover:border-blue-200 dark:border-slate-800 dark:hover:border-slate-700'
                       }`}
@@ -439,7 +467,7 @@ export default function SessionBookingFlow() {
                   <p className="mt-1 font-semibold text-slate-950 dark:text-white">
                     {new Intl.NumberFormat('en-IN', {
                       style: 'currency',
-                      currency: 'INR',
+                      currency: paymentInitQuery.data?.currency ?? 'USD',
                       maximumFractionDigits: 0,
                     }).format(sessionSummary.amount)}
                   </p>
@@ -504,7 +532,7 @@ export default function SessionBookingFlow() {
                   return;
                 }
 
-                if (currentStep === 1 && !selectedSlotId) {
+                if (currentStep === 1 && !selectedSlotKey) {
                   toast.error(t('errors.required'));
                   return;
                 }

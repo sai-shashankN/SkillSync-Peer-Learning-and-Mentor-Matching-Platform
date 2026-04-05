@@ -13,8 +13,8 @@ spring:
     enabled: true
     locations: classpath:db/migration
 paypal:
-  client-id: ${PAYPAL_CLIENT_ID:paypal-sandbox-client-id}
-  client-secret: ${PAYPAL_CLIENT_SECRET:paypal-sandbox-client-secret}
+  client-id: ${PAYPAL_CLIENT_ID:AZaSldls0bYEdIwLX9j_Q07sdAdABm-la4bsQEohq9wb_tUQUBgecv6qlGNrFPjZqlQ9wN8A84hygQQg}
+  client-secret: ${PAYPAL_CLIENT_SECRET:EEJCTtKyULGBPGnrRENIKYR6lGF87vkFW7FDjHHn_RILE_A10DoENOiv_qcM07aFtV4ZEOhJeXx_jhhW}
   base-url: ${PAYPAL_BASE_URL:https://api-m.sandbox.paypal.com}
-  currency: ${PAYPAL_CURRENCY:INR}
+  currency: ${PAYPAL_CURRENCY:USD}
   brand-name: ${PAYPAL_BRAND_NAME:SkillSync}

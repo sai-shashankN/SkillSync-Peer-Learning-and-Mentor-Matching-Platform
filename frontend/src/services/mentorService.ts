@@ -48,6 +48,15 @@ export interface AvailabilitySlot {
   dayOfWeek: string;
   startTime: string;
   endTime: string;
+  isActive?: boolean;
+}
+
+interface RawAvailabilitySlot {
+  id: number;
+  dayOfWeek: number | string;
+  startTime: string;
+  endTime: string;
+  isActive?: boolean | null;
 }
 
 interface RawMentorSummary {
@@ -67,8 +76,22 @@ interface RawMentorSummary {
 }
 
 interface RawMentorDetail extends RawMentorSummary {
-  availability?: AvailabilitySlot[] | null;
+  availability?: RawAvailabilitySlot[] | null;
 }
+
+const weekdayNames = [
+  'SUNDAY',
+  'MONDAY',
+  'TUESDAY',
+  'WEDNESDAY',
+  'THURSDAY',
+  'FRIDAY',
+  'SATURDAY',
+] as const;
+
+const weekdayToIndex = Object.fromEntries(
+  weekdayNames.map((day, index) => [day, index]),
+) as Record<(typeof weekdayNames)[number], number>;
 
 function toNumber(value: number | string | null | undefined) {
   if (typeof value === 'number') {
@@ -89,6 +112,45 @@ function formatExperienceYears(experienceYears: number | null | undefined) {
   }
 
   return `${experienceYears} year${experienceYears === 1 ? '' : 's'}`;
+}
+
+function normalizeDayOfWeek(dayOfWeek: number | string | null | undefined) {
+  if (typeof dayOfWeek === 'number') {
+    return weekdayNames[dayOfWeek] ?? weekdayNames[0];
+  }
+
+  if (typeof dayOfWeek === 'string') {
+    const trimmed = dayOfWeek.trim();
+    if (!trimmed) {
+      return weekdayNames[0];
+    }
+
+    const upper = trimmed.toUpperCase() as (typeof weekdayNames)[number];
+    if (upper in weekdayToIndex) {
+      return upper;
+    }
+
+    const numeric = Number(trimmed);
+    if (Number.isInteger(numeric)) {
+      return weekdayNames[numeric] ?? weekdayNames[0];
+    }
+  }
+
+  return weekdayNames[0];
+}
+
+function serializeDayOfWeek(dayOfWeek: string) {
+  return weekdayToIndex[normalizeDayOfWeek(dayOfWeek)];
+}
+
+function normalizeAvailabilitySlot(slot: RawAvailabilitySlot): AvailabilitySlot {
+  return {
+    id: slot.id,
+    dayOfWeek: normalizeDayOfWeek(slot.dayOfWeek),
+    startTime: slot.startTime,
+    endTime: slot.endTime,
+    isActive: slot.isActive ?? undefined,
+  };
 }
 
 function normalizeMentorSummary(mentor: RawMentorSummary): MentorSummary {
@@ -117,7 +179,7 @@ function normalizeMentorSummary(mentor: RawMentorSummary): MentorSummary {
 }
 
 function normalizeMentorDetail(mentor: RawMentorDetail): MentorDetail {
-  const availability = mentor.availability ?? [];
+  const availability = (mentor.availability ?? []).map(normalizeAvailabilitySlot);
   const normalized = normalizeMentorSummary(mentor);
 
   return {
@@ -190,9 +252,18 @@ export const mentorService = {
       .put<ApiResponse<RawMentorSummary>>(`/mentors/${id}/skills`, data)
       .then((response) => mapApiResponse(response, normalizeMentorSummary)),
   getAvailability: (id: number) =>
-    api.get<ApiResponse<AvailabilitySlot[]>>(`/mentors/${id}/availability`),
+    api
+      .get<ApiResponse<RawAvailabilitySlot[]>>(`/mentors/${id}/availability`)
+      .then((response) => mapApiResponse(response, (slots) => slots.map(normalizeAvailabilitySlot))),
   setAvailability: (id: number, slots: SetAvailabilitySlot[]) =>
-    api.put<ApiResponse<AvailabilitySlot[]>>(`/mentors/${id}/availability`, { slots }),
+    api
+      .put<ApiResponse<RawAvailabilitySlot[]>>(`/mentors/${id}/availability`, {
+        slots: slots.map((slot) => ({
+          ...slot,
+          dayOfWeek: serializeDayOfWeek(slot.dayOfWeek),
+        })),
+      })
+      .then((response) => mapApiResponse(response, (items) => items.map(normalizeAvailabilitySlot))),
   joinWaitlist: (id: number) => api.post<ApiResponse<unknown>>(`/mentors/${id}/waitlist`),
   approveMentor: (id: number) =>
     api

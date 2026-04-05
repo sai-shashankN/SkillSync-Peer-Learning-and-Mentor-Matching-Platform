@@ -281,6 +281,69 @@ function Ensure-MentorProfile {
     return $null
 }
 
+function Get-AvailabilitySlotKeys {
+    param([object[]]$Slots)
+
+    if ($null -eq $Slots) {
+        return @()
+    }
+
+    return @(
+        $Slots |
+        Where-Object { $null -ne $_ } |
+        ForEach-Object {
+            "{0}:{1}:{2}" -f [int]$_.dayOfWeek, [string]$_.startTime, [string]$_.endTime
+        } |
+        Sort-Object
+    )
+}
+
+function Ensure-MentorAvailability {
+    param(
+        [long]$MentorId,
+        [string]$Email,
+        [hashtable]$Tokens,
+        [object[]]$Slots
+    )
+
+    $token = $Tokens[$Email]
+    if (-not $token) {
+        Write-WarnLine "Skipping mentor availability for $Email because no token is available"
+        return
+    }
+
+    $currentAvailability = Api -Method GET -Url "$GW/mentors/$MentorId/availability" -Headers (Auth $token)
+    if ($null -eq $currentAvailability) {
+        Write-WarnLine "Skipping mentor availability for $Email because current availability could not be fetched"
+        return
+    }
+
+    $existingSlots = @()
+    if ($currentAvailability.data) {
+        $existingSlots = @($currentAvailability.data)
+    }
+
+    $targetSlots = @($Slots)
+    $existingKeys = Get-AvailabilitySlotKeys -Slots $existingSlots
+    $targetKeys = Get-AvailabilitySlotKeys -Slots $targetSlots
+
+    if (($existingKeys.Count -eq $targetKeys.Count) -and (@($existingKeys) -join "|") -eq (@($targetKeys) -join "|")) {
+        Write-Info "Mentor availability already matches seed schedule for $Email"
+        return
+    }
+
+    $result = Api -Method PUT -Url "$GW/mentors/$MentorId/availability" -Headers (Auth $token) -Body @{
+        slots = $targetSlots
+    }
+
+    if ($result -and $result.data) {
+        Write-Info "Applied $($targetSlots.Count) weekly availability slots for $Email"
+        return
+    }
+
+    Write-WarnLine "Failed to apply mentor availability for $Email"
+}
+
 function Find-GroupByName {
     param(
         [string]$Token,
@@ -412,7 +475,7 @@ $users = @(
 
 $tokens = @{}
 
-Write-Step "[1/10] Seeding categories and skills"
+Write-Step "[1/11] Seeding categories and skills"
 
 $categorySql = @"
 INSERT INTO skill_categories (name, slug, display_order) VALUES
@@ -451,7 +514,7 @@ Write-Info "Seeded skills."
 docker exec $REDIS_CONTAINER redis-cli FLUSHALL 2>&1 | Out-Null
 Write-Info "Flushed Redis cache."
 
-Write-Step "[2/10] Registering or logging in demo users"
+Write-Step "[2/11] Registering or logging in demo users"
 
 foreach ($user in $users) {
     $token = Register-Or-LoginUser -User $user
@@ -460,7 +523,7 @@ foreach ($user in $users) {
     }
 }
 
-Write-Step "[3/10] Promoting admin and creating mentor profiles"
+Write-Step "[3/11] Promoting admin and creating mentor profiles"
 
 $promoteAdminSql = @"
 INSERT INTO user_roles (user_id, role_id)
@@ -499,7 +562,7 @@ Ensure-MentorProfile -Email "rajeev@skillsync.com" -Tokens $tokens `
     -HourlyRate 1500 `
     -SkillIds @($javaSkillIdInt, $reactSkillIdInt, $springBootSkillIdInt, $typeScriptSkillIdInt, $nodeJsSkillIdInt) | Out-Null
 
-Write-Step "[4/10] Approving mentors and refreshing JWT tokens"
+Write-Step "[4/11] Approving mentors and refreshing JWT tokens"
 
 $approveMentorsSql = @"
 UPDATE mentors SET status = 'APPROVED', approved_at = NOW(), updated_at = NOW()
@@ -520,7 +583,7 @@ Write-Info "Granted ROLE_MENTOR to mentor users."
 
 Refresh-AllTokens -Users $users -Tokens $tokens
 
-Write-Step "[5/10] Resolving user and mentor IDs"
+Write-Step "[5/11] Resolving user and mentor IDs"
 
 $adminId = Require-Value -Name "admin user ID" -Value (Get-SqlValue -Database "skillsync_auth" -Sql "SELECT id FROM users WHERE email='admin@skillsync.com';")
 $mentorUserId = Require-Value -Name "mentor user ID" -Value (Get-SqlValue -Database "skillsync_auth" -Sql "SELECT id FROM users WHERE email='mentor@skillsync.com';")
@@ -533,7 +596,24 @@ $rajeevMentorId = Require-Value -Name "Rajeev mentor ID" -Value (Get-SqlValue -D
 
 Write-Info "Resolved auth and mentor service IDs."
 
-Write-Step "[6/10] Seeding sessions and reviews"
+Write-Step "[6/11] Seeding mentor availability"
+
+$ananyaAvailabilitySlots = @(
+    @{ dayOfWeek = 1; startTime = "10:00:00"; endTime = "13:00:00" },
+    @{ dayOfWeek = 3; startTime = "14:00:00"; endTime = "17:00:00" },
+    @{ dayOfWeek = 6; startTime = "11:00:00"; endTime = "15:00:00" }
+)
+
+$rajeevAvailabilitySlots = @(
+    @{ dayOfWeek = 2; startTime = "09:00:00"; endTime = "12:00:00" },
+    @{ dayOfWeek = 4; startTime = "18:00:00"; endTime = "21:00:00" },
+    @{ dayOfWeek = 0; startTime = "10:00:00"; endTime = "13:00:00" }
+)
+
+Ensure-MentorAvailability -MentorId ([long]$mentorMentorId) -Email "mentor@skillsync.com" -Tokens $tokens -Slots $ananyaAvailabilitySlots
+Ensure-MentorAvailability -MentorId ([long]$rajeevMentorId) -Email "rajeev@skillsync.com" -Tokens $tokens -Slots $rajeevAvailabilitySlots
+
+Write-Step "[7/11] Seeding sessions and reviews"
 
 $bookingRef1 = "BK-$BOOKING_DATE-001"
 $bookingRef2 = "BK-$BOOKING_DATE-002"
@@ -583,7 +663,7 @@ WHERE user_id = $rajeevUserId;
 Invoke-SqlNonQuery -Database "skillsync_mentors" -Sql $mentorStatsSql
 Write-Info "Updated mentor aggregate stats."
 
-Write-Step "[7/10] Creating study groups"
+Write-Step "[8/11] Creating study groups"
 
 $group1 = Ensure-Group `
     -Name "Java Spring Boot Study Circle" `
@@ -615,7 +695,7 @@ if ($group2 -and $group2.id) {
     Ensure-GroupMessage -GroupId ([long]$group2.id) -Email "learner@skillsync.com" -Content "Glad to be here. I want to get better at typed component APIs and modern React debugging workflows." -Tokens $tokens
 }
 
-Write-Step "[8/10] Seeding notifications"
+Write-Step "[9/11] Seeding notifications"
 
 if (Test-TableExists -Database "skillsync_notifications" -Table "notifications") {
     $notificationColumns = Get-TableColumns -Database "skillsync_notifications" -Table "notifications"
@@ -653,7 +733,7 @@ ON CONFLICT DO NOTHING;
     Write-WarnLine "Skipping notifications seed because notifications table does not exist"
 }
 
-Write-Step "[9/10] Seeding payments and mentor earnings"
+Write-Step "[10/11] Seeding payments and mentor earnings"
 
 if (Test-TableExists -Database "skillsync_payments" -Table "payments") {
     $paymentColumns = Get-TableColumns -Database "skillsync_payments" -Table "payments"
@@ -740,7 +820,7 @@ VALUES ($rajeevMentorId, 3750.00, 3750.00, 0.00, NOW(), NOW());
     Write-WarnLine "Skipping mentor earnings seed because mentor_earnings table does not exist"
 }
 
-Write-Step "[10/10] Summary"
+Write-Step "[11/11] Summary"
 
 Write-Host ""
 Write-Host "========================================" -ForegroundColor Cyan
@@ -762,6 +842,10 @@ Write-Host "  Seeded groups:" -ForegroundColor Yellow
 Write-Host "    Java Spring Boot Study Circle"
 Write-Host "    React & TypeScript Guild"
 Write-Host ""
+Write-Host "  Seeded mentor availability:" -ForegroundColor Yellow
+Write-Host "    mentor@skillsync.com -> Mon 10:00-13:00, Wed 14:00-17:00, Sat 11:00-15:00"
+Write-Host "    rajeev@skillsync.com -> Sun 10:00-13:00, Tue 09:00-12:00, Thu 18:00-21:00"
+Write-Host ""
 Write-Host "  Session booking references:" -ForegroundColor Yellow
 Write-Host "    $bookingRef1"
 Write-Host "    $bookingRef2"
@@ -771,5 +855,5 @@ Write-Host "    $bookingRef5"
 Write-Host "    $bookingRef6"
 Write-Host ""
 Write-Host "  JWTs were refreshed after role updates." -ForegroundColor Gray
-Write-Host "  Re-run is safe for users, roles, sessions, reviews, notifications, and payments." -ForegroundColor Gray
+Write-Host "  Re-run is safe for users, roles, mentor availability, sessions, reviews, notifications, and payments." -ForegroundColor Gray
 Write-Host ""

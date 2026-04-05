@@ -19,7 +19,7 @@ export interface CreateHoldRequest {
   mentorId: number;
   skillId: number;
   startAt: string;
-  endAt: string;
+  durationMinutes: number;
 }
 
 export interface CreateSessionRequest {

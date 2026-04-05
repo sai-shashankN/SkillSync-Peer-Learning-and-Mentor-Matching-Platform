@@ -60,15 +60,15 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "prometheus"
       },
-      "description": "Placeholder query. Export RabbitMQ queue metrics through the Prometheus plugin before using this panel for operational thresholds.",
+      "description": "Local environments do not expose RabbitMQ queue metrics, so this panel tracks total backend throughput instead.",
       "fieldConfig": {
         "defaults": {
           "color": {
             "mode": "palette-classic"
           },
-          "unit": "short"
+          "unit": "reqps"
         },
         "overrides": []
       },
@@ -80,33 +80,36 @@
       },
       "id": 1,
       "options": {
-        "legend": {
-          "calcs": [],
-          "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": true
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
         },
-        "tooltip": {
-          "mode": "multi",
-          "sort": "desc"
-        }
+        "textMode": "value_and_name"
       },
       "targets": [
         {
           "editorMode": "code",
-          "expr": "rabbitmq_queue_messages",
-          "legendFormat": "{{queue}}",
-          "range": true,
+          "expr": "sum(rate(http_server_requests_seconds_count[5m]))",
+          "instant": true,
+          "legendFormat": "total",
+          "range": false,
           "refId": "A"
         }
       ],
-      "title": "RabbitMQ Queue Depth",
-      "type": "timeseries"
+      "title": "Total Request Rate",
+      "type": "stat"
     },
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "prometheus"
       },
       "fieldConfig": {
         "defaults": {
@@ -168,7 +171,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "prometheus"
       },
       "fieldConfig": {
         "defaults": {
@@ -213,7 +216,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "prometheus"
       },
       "fieldConfig": {
         "defaults": {
@@ -265,13 +268,13 @@
       "targets": [
         {
           "editorMode": "code",
-          "expr": "rate(cache_gets_total{result=\"hit\"}[5m]) / rate(cache_gets_total[5m])",
-          "legendFormat": "Cache Hit Ratio",
+          "expr": "sum(up) / count(up)",
+          "legendFormat": "Scrape Success Ratio",
           "range": true,
           "refId": "A"
         }
       ],
-      "title": "Cache Hit Ratio",
+      "title": "Scrape Success Ratio",
       "type": "gauge"
     }
   ],

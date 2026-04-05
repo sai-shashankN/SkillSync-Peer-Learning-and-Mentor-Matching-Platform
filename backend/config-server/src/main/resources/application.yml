@@ -5,9 +5,20 @@ spring:
   application:
     name: config-server
   profiles:
-    active: native
+    default: native
+    group:
+      dev:
+        - composite
+      test:
+        - composite
   cloud:
     config:
       server:
         native:
           search-locations: classpath:/configurations
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus

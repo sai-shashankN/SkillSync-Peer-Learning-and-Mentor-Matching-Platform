@@ -4,7 +4,7 @@ import com.skillsync.common.dto.ApiResponse;
 import com.skillsync.common.exception.BadRequestException;
 import java.math.BigDecimal;
 import lombok.Data;
-import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -16,10 +16,13 @@ import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 
 @Service
-@RequiredArgsConstructor
 public class SessionClient {
 
     private final RestTemplate restTemplate;
+
+    public SessionClient(@Qualifier("restTemplate") RestTemplate restTemplate) {
+        this.restTemplate = restTemplate;
+    }
 
     public SessionSnapshot getSession(Long sessionId, Long userId) {
         String url = "http://session-service/sessions/" + sessionId;

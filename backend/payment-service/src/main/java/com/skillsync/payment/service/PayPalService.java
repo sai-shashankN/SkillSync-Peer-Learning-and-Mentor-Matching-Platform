@@ -11,7 +11,7 @@ import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.Base64;
 import java.util.List;
-import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -26,16 +26,26 @@ import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 
 @Service
-@RequiredArgsConstructor
 public class PayPalService {
 
     private static final String ORDER_ALREADY_CAPTURED = "ORDER_ALREADY_CAPTURED";
 
+    @Qualifier("payPalRestTemplate")
     private final RestTemplate restTemplate;
     private final PayPalConfig payPalConfig;
     private final ObjectMapper objectMapper;
 
     private volatile OAuthToken cachedToken;
+
+    public PayPalService(
+            @Qualifier("payPalRestTemplate") RestTemplate restTemplate,
+            PayPalConfig payPalConfig,
+            ObjectMapper objectMapper
+    ) {
+        this.restTemplate = restTemplate;
+        this.payPalConfig = payPalConfig;
+        this.objectMapper = objectMapper;
+    }
 
     public PayPalOrderResult createOrder(BigDecimal amount, String currency, String customId) {
         JsonNode response = exchangeJson(

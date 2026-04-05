@@ -16,6 +16,15 @@ function Write-Step {
     Write-Host "==> $Message"
 }
 
+function Flush-RedisCache {
+    try {
+        & docker exec infra-redis-1 redis-cli FLUSHALL | Out-Null
+        Write-Host "Redis cache cleared."
+    } catch {
+        Write-Warning "Could not flush Redis cache: $($_.Exception.Message)"
+    }
+}
+
 if ($Bootstrap) {
     Write-Step "Running local bootstrap first"
     & "$PSScriptRoot\setup-local.ps1"
@@ -33,6 +42,9 @@ if (-not $SkipInfra) {
         Pop-Location
     }
 }
+
+Write-Step "Flushing Redis cache"
+Flush-RedisCache
 
 $startupOrder = @(
     "config-server",
