@@ -31,23 +31,46 @@
         },
         {
             "id": "3",
+            "name": "Fetch Payer User",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.4,
+            "position": [
+                740,
+                280
+            ],
+            "parameters": {
+                "method": "GET",
+                "url": "=http://host.docker.internal:8082/users/internal/{{$node['Normalize Payload'].json.payerId}}",
+                "sendHeaders": true,
+                "headerParameters": {
+                    "parameters": [
+                        {
+                            "name": "X-Internal-Service-Token",
+                            "value": "={{$env.INTERNAL_SERVICE_TOKEN}}"
+                        }
+                    ]
+                }
+            }
+        },
+        {
+            "id": "4",
             "name": "Send Receipt Email",
             "type": "n8n-nodes-resend.resend",
             "typeVersion": 1,
             "position": [
-                740,
+                980,
                 280
             ],
             "parameters": {
                 "resource": "email",
                 "operation": "send",
                 "from": "SkillSync <noreply@saishashank.dev>",
-                "to": "={{$json.email || $json.payerEmail || \"learner@example.com\"}}",
+                "to": "={{$json.data?.email || $node[\"Normalize Payload\"].json.payerEmail}}",
                 "subject": "SkillSync payment receipt",
                 "useTemplate": false,
                 "emailFormat": "both",
-                "html": "={{`<div><h1>Payment received</h1><p>We have received your payment for SkillSync.</p><p>Payment ID: ${$json.paymentId ?? \"N/A\"}</p><p>Session ID: ${$json.sessionId ?? \"N/A\"}</p></div>`}}",
-                "text": "={{`We have received your payment for SkillSync. Payment ID: ${$json.paymentId ?? \"N/A\"}. Session ID: ${$json.sessionId ?? \"N/A\"}.`}}",
+                "html": "={{`<div><h1>Payment received</h1><p>We have received your payment for SkillSync.</p><p>Payment ID: ${$node[\"Normalize Payload\"].json.paymentId ?? \"N/A\"}</p><p>Session ID: ${$node[\"Normalize Payload\"].json.sessionId ?? \"N/A\"}</p></div>`}}",
+                "text": "={{`We have received your payment for SkillSync. Payment ID: ${$node[\"Normalize Payload\"].json.paymentId ?? \"N/A\"}. Session ID: ${$node[\"Normalize Payload\"].json.sessionId ?? \"N/A\"}.`}}",
                 "additionalOptions": {}
             },
             "credentials": {
@@ -71,6 +94,17 @@
             ]
         },
         "Normalize Payload": {
+            "main": [
+                [
+                    {
+                        "node": "Fetch Payer User",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Fetch Payer User": {
             "main": [
                 [
                     {

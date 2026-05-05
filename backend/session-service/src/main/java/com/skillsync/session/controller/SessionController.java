@@ -4,6 +4,7 @@ import com.skillsync.common.dto.ApiResponse;
 import com.skillsync.common.dto.PagedResponse;
 import com.skillsync.common.exception.BadRequestException;
 import com.skillsync.common.exception.UnauthorizedException;
+import com.skillsync.common.security.InternalServiceAuth;
 import com.skillsync.session.dto.CancelSessionRequest;
 import com.skillsync.session.dto.CreateFeedbackRequest;
 import com.skillsync.session.dto.CreateHoldRequest;
@@ -27,6 +28,7 @@ import jakarta.validation.Valid;
 import java.time.Instant;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -51,6 +53,8 @@ public class SessionController {
     private final HoldService holdService;
     private final SessionService sessionService;
     private final FeedbackService feedbackService;
+    @Value("${internal.service-token:}")
+    private String internalServiceToken;
 
     @PostMapping("/holds")
     public ResponseEntity<ApiResponse<SessionHoldResponse>> createHold(
@@ -92,45 +96,45 @@ public class SessionController {
     }
 
     @GetMapping("/internal/{id}")
-    public ResponseEntity<ApiResponse<SessionInternalResponse>> getInternalSessionById(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<SessionInternalResponse>> getInternalSessionById(
+            @PathVariable Long id,
+            @RequestHeader(value = InternalServiceAuth.HEADER_NAME, required = false) String serviceToken
+    ) {
+        requireInternalServiceToken(serviceToken);
         Session session = sessionService.getRequiredSession(id);
-        SessionInternalResponse response = SessionInternalResponse.builder()
-                .id(session.getId())
-                .mentorId(session.getMentorId())
-                .learnerId(session.getLearnerId())
-                .skillId(session.getSkillId())
-                .startAt(session.getStartAt())
-                .endAt(session.getEndAt())
-                .status(session.getStatus().name())
-                .zoomLink(session.getZoomLink())
-                .calendarEventId(session.getCalendarEventId())
-                .build();
+        SessionInternalResponse response = sessionService.toInternalResponse(session);
         return ResponseEntity.ok(ApiResponse.ok("Internal session fetched successfully", response));
     }
 
     @PatchMapping("/internal/{id}/integration")
     public ResponseEntity<ApiResponse<Void>> updateSessionIntegration(
             @PathVariable Long id,
+            @RequestHeader(value = InternalServiceAuth.HEADER_NAME, required = false) String serviceToken,
             @RequestBody UpdateSessionIntegrationRequest request
     ) {
+        requireInternalServiceToken(serviceToken);
         sessionService.updateIntegrationFields(id, request.getZoomLink(), request.getCalendarEventId());
         return ResponseEntity.ok(ApiResponse.ok("Session integration fields updated", null));
     }
 
     @GetMapping("/internal/count")
     public ResponseEntity<ApiResponse<Long>> countSessions(
+            @RequestHeader(value = InternalServiceAuth.HEADER_NAME, required = false) String serviceToken,
             @RequestParam Long learnerId,
             @RequestParam Long skillId,
             @RequestParam SessionStatus status
     ) {
+        requireInternalServiceToken(serviceToken);
         long count = sessionService.countByLearnerIdAndSkillIdAndStatus(learnerId, skillId, status);
         return ResponseEntity.ok(ApiResponse.ok("Session count fetched successfully", count));
     }
 
     @GetMapping("/internal/upcoming")
     public ResponseEntity<ApiResponse<List<SessionInternalResponse>>> getUpcomingSessions(
+            @RequestHeader(value = InternalServiceAuth.HEADER_NAME, required = false) String serviceToken,
             @RequestParam(defaultValue = "60") int withinMinutes
     ) {
+        requireInternalServiceToken(serviceToken);
         return ResponseEntity.ok(ApiResponse.ok(
                 "Upcoming sessions fetched",
                 sessionService.getUpcomingSessions(withinMinutes)
@@ -249,20 +253,32 @@ public class SessionController {
         Session session = sessionService.getRequiredSession(id);
         Long userId = RequestHeaderUtils.extractUserId(request);
         boolean admin = RequestHeaderUtils.hasAdminRole(request);
-        if (!admin && !session.getLearnerId().equals(userId) && !session.getMentorId().equals(userId)) {
+        if (!sessionService.canAccess(session, userId, admin)) {
             throw new UnauthorizedException("You are not allowed to access this session");
         }
         return ResponseEntity.ok(ApiResponse.ok("Feedback fetched successfully", feedbackService.getFeedbackForSession(id)));
     }
 
     @PutMapping("/internal/{id}/mark-paid")
-    public ResponseEntity<ApiResponse<SessionResponse>> markPaid(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<SessionResponse>> markPaid(
+            @PathVariable Long id,
+            @RequestHeader(value = InternalServiceAuth.HEADER_NAME, required = false) String serviceToken
+    ) {
+        requireInternalServiceToken(serviceToken);
         return ResponseEntity.ok(ApiResponse.ok("Session marked as paid", sessionService.markPaid(id)));
     }
 
     @PutMapping("/internal/{id}/payment-failed")
-    public ResponseEntity<ApiResponse<SessionResponse>> markPaymentFailed(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<SessionResponse>> markPaymentFailed(
+            @PathVariable Long id,
+            @RequestHeader(value = InternalServiceAuth.HEADER_NAME, required = false) String serviceToken
+    ) {
+        requireInternalServiceToken(serviceToken);
         return ResponseEntity.ok(ApiResponse.ok("Session marked as payment failed", sessionService.markPaymentFailed(id)));
+    }
+
+    private void requireInternalServiceToken(String serviceToken) {
+        InternalServiceAuth.requireValidToken(serviceToken, internalServiceToken);
     }
 
     private String requireIdempotencyKey(String idempotencyKey) {

@@ -4,8 +4,8 @@ services:
     image: postgres:15
     command: postgres -c max_connections=200
     environment:
-      POSTGRES_USER: skillsync
-      POSTGRES_PASSWORD: skillsync
+      POSTGRES_USER: ${POSTGRES_USER:?Set POSTGRES_USER in ../.env or the shell}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in ../.env or the shell}
     ports:
       - "5432:5432"
     volumes:
@@ -30,8 +30,8 @@ services:
   rabbitmq:
     image: rabbitmq:3-management
     environment:
-      RABBITMQ_DEFAULT_USER: skillsync
-      RABBITMQ_DEFAULT_PASS: skillsync
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER:?Set RABBITMQ_DEFAULT_USER in ../.env or the shell}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS:?Set RABBITMQ_DEFAULT_PASS in ../.env or the shell}
     ports:
       - "5672:5672"
       - "15672:15672"
@@ -52,8 +52,8 @@ services:
         condition: service_healthy
     environment:
       N8N_BASIC_AUTH_ACTIVE: "true"
-      N8N_BASIC_AUTH_USER: admin
-      N8N_BASIC_AUTH_PASSWORD: skillsync
+      N8N_BASIC_AUTH_USER: ${N8N_BASIC_AUTH_USER:?Set N8N_BASIC_AUTH_USER in ../.env or the shell}
+      N8N_BASIC_AUTH_PASSWORD: ${N8N_BASIC_AUTH_PASSWORD:?Set N8N_BASIC_AUTH_PASSWORD in ../.env or the shell}
       N8N_PORT: 5678
       WEBHOOK_URL: https://n8n.saishashank.dev/
       N8N_PROTOCOL: https
@@ -63,8 +63,8 @@ services:
       DB_POSTGRESDB_HOST: postgres
       DB_POSTGRESDB_PORT: 5432
       DB_POSTGRESDB_DATABASE: skillsync_n8n
-      DB_POSTGRESDB_USER: skillsync
-      DB_POSTGRESDB_PASSWORD: skillsync
+      DB_POSTGRESDB_USER: ${POSTGRES_USER:?Set POSTGRES_USER in ../.env or the shell}
+      DB_POSTGRESDB_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in ../.env or the shell}
     volumes:
       - n8n_data:/home/node/.n8n
     healthcheck:
@@ -93,8 +93,8 @@ services:
     ports:
       - "3001:3000"
     environment:
-      GF_SECURITY_ADMIN_USER: admin
-      GF_SECURITY_ADMIN_PASSWORD: skillsync
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:?Set GRAFANA_ADMIN_USER in ../.env or the shell}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?Set GRAFANA_ADMIN_PASSWORD in ../.env or the shell}
     volumes:
       - grafana_data:/var/lib/grafana
       - ./grafana/provisioning:/etc/grafana/provisioning

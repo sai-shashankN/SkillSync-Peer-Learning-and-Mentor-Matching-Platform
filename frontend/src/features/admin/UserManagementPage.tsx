@@ -11,22 +11,8 @@ import { adminUserService } from '../../services/adminUserService';
 const roleOptions = ['ALL', 'LEARNER', 'MENTOR', 'ADMIN'] as const;
 const statusOptions = ['ALL', 'ACTIVE', 'BANNED'] as const;
 
-function getUserStatus(status?: string | null): { label: string; variant: 'success' | 'danger' | 'default' } {
-  const normalizedStatus = status?.trim().toUpperCase();
-
-  if (normalizedStatus === 'BANNED') {
-    return { label: 'BANNED', variant: 'danger' };
-  }
-
-  if (normalizedStatus === 'ACTIVE') {
-    return { label: 'ACTIVE', variant: 'success' };
-  }
-
-  if (status?.trim()) {
-    return { label: status.trim(), variant: 'default' };
-  }
-
-  return { label: 'UNKNOWN', variant: 'default' };
+function getUserStatus(isActive: boolean): { label: 'ACTIVE' | 'BANNED'; variant: 'success' | 'danger' } {
+  return isActive ? { label: 'ACTIVE', variant: 'success' } : { label: 'BANNED', variant: 'danger' };
 }
 
 export default function UserManagementPage() {
@@ -64,7 +50,7 @@ export default function UserManagementPage() {
 
     const normalizedSearch = deferredSearch.toLowerCase();
     return users.filter((user) =>
-      [user.name, user.email].join(' ').toLowerCase().includes(normalizedSearch),
+      [user.name ?? `User #${user.userId}`, user.email ?? ''].join(' ').toLowerCase().includes(normalizedSearch),
     );
   }, [deferredSearch, usersQuery.data?.content]);
 
@@ -158,13 +144,15 @@ export default function UserManagementPage() {
             </thead>
             <tbody>
               {filteredUsers.map((user) => {
-                const userStatus = getUserStatus(user.status);
+                const userStatus = getUserStatus(user.isActive);
                 const isBanned = userStatus.label === 'BANNED';
+                const displayName = user.name?.trim() || `User #${user.userId}`;
+                const displayEmail = user.email?.trim() || '-';
 
                 return (
-                  <tr key={user.id} className="border-t border-slate-200/70 dark:border-slate-800">
-                    <td className="py-3 font-medium text-slate-900 dark:text-slate-100">{user.name}</td>
-                    <td className="py-3 text-slate-700 dark:text-slate-200">{user.email}</td>
+                  <tr key={user.userId} className="border-t border-slate-200/70 dark:border-slate-800">
+                    <td className="py-3 font-medium text-slate-900 dark:text-slate-100">{displayName}</td>
+                    <td className="py-3 text-slate-700 dark:text-slate-200">{displayEmail}</td>
                     <td className="py-3">
                       <div className="flex flex-wrap gap-2">
                         {(user.roles ?? []).map((userRole) => (
@@ -188,7 +176,7 @@ export default function UserManagementPage() {
                         variant={isBanned ? 'outline' : 'danger'}
                         isLoading={
                           updateUserStatusMutation.isPending &&
-                          updateUserStatusMutation.variables?.id === user.id
+                          updateUserStatusMutation.variables?.id === user.userId
                         }
                         onClick={() => {
                           const nextStatus = isBanned ? 'ACTIVE' : 'BANNED';
@@ -199,7 +187,7 @@ export default function UserManagementPage() {
                             return;
                           }
 
-                          updateUserStatusMutation.mutate({ id: user.id, status: nextStatus });
+                          updateUserStatusMutation.mutate({ id: user.userId, status: nextStatus });
                         }}
                       >
                         {isBanned ? t('admin.unban_user') : t('admin.ban_user')}

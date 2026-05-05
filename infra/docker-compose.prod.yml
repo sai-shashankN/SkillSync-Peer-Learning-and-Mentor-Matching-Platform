@@ -40,15 +40,15 @@ services:
 
   eureka-server:
     image: skillsync/eureka-server:latest
-    ports:
-      - "8761:8761"
+    env_file:
+      - ../.env
     environment:
       SPRING_PROFILES_ACTIVE: docker
 
   config-server:
     image: skillsync/config-server:latest
-    ports:
-      - "8888:8888"
+    env_file:
+      - ../.env
     depends_on:
       - eureka-server
     environment:
@@ -57,8 +57,8 @@ services:
 
   auth-service:
     image: skillsync/auth-service:latest
-    ports:
-      - "8081:8081"
+    env_file:
+      - ../.env
     depends_on:
       - eureka-server
       - config-server
@@ -75,8 +75,8 @@ services:
 
   user-service:
     image: skillsync/user-service:latest
-    ports:
-      - "8082:8082"
+    env_file:
+      - ../.env
     depends_on:
       - eureka-server
       - config-server
@@ -93,8 +93,8 @@ services:
 
   mentor-service:
     image: skillsync/mentor-service:latest
-    ports:
-      - "8083:8083"
+    env_file:
+      - ../.env
     depends_on:
       - eureka-server
       - config-server
@@ -111,8 +111,8 @@ services:
 
   skill-service:
     image: skillsync/skill-service:latest
-    ports:
-      - "8084:8084"
+    env_file:
+      - ../.env
     depends_on:
       - eureka-server
       - config-server
@@ -129,8 +129,8 @@ services:
 
   session-service:
     image: skillsync/session-service:latest
-    ports:
-      - "8085:8085"
+    env_file:
+      - ../.env
     depends_on:
       - eureka-server
       - config-server
@@ -147,8 +147,8 @@ services:
 
   payment-service:
     image: skillsync/payment-service:latest
-    ports:
-      - "8086:8086"
+    env_file:
+      - ../.env
     depends_on:
       - eureka-server
       - config-server
@@ -165,8 +165,8 @@ services:
 
   review-service:
     image: skillsync/review-service:latest
-    ports:
-      - "8087:8087"
+    env_file:
+      - ../.env
     depends_on:
       - eureka-server
       - config-server
@@ -183,8 +183,8 @@ services:
 
   group-service:
     image: skillsync/group-service:latest
-    ports:
-      - "8088:8088"
+    env_file:
+      - ../.env
     depends_on:
       - eureka-server
       - config-server
@@ -201,8 +201,8 @@ services:
 
   notification-service:
     image: skillsync/notification-service:latest
-    ports:
-      - "8089:8089"
+    env_file:
+      - ../.env
     depends_on:
       - eureka-server
       - config-server
@@ -219,8 +219,8 @@ services:
 
   audit-service:
     image: skillsync/audit-service:latest
-    ports:
-      - "8090:8090"
+    env_file:
+      - ../.env
     depends_on:
       - eureka-server
       - config-server
@@ -237,6 +237,8 @@ services:
 
   api-gateway:
     image: skillsync/api-gateway:latest
+    env_file:
+      - ../.env
     ports:
       - "8091:8091"
     depends_on:
@@ -254,3 +256,9 @@ services:
     depends_on:
       - api-gateway
       - notification-service
+
+volumes:
+  postgres_data:
+  n8n_data:
+  prometheus_data:
+  grafana_data:

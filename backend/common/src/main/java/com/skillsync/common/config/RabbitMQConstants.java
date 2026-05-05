@@ -28,7 +28,7 @@ public final class RabbitMQConstants {
     public static final String RK_PAYMENT_RECEIVED = "event.payment.received";
     public static final String RK_PAYMENT_REFUNDED = "event.payment.refunded";
     public static final String RK_BADGE_EARNED = "event.badge.earned";
-    public static final String RK_WAITLIST_SLOT_OPEN = "event.waitlist.slot_open";
+    public static final String RK_WAITLIST_SLOT_OPEN = "event.waitlist.slot.open";
     public static final String RK_REVIEW_SUBMITTED = "event.review.submitted";
 
     private RabbitMQConstants() {

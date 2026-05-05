@@ -104,7 +104,7 @@ export default function ProfilePage() {
   });
 
   const addSkillMutation = useMutation({
-    mutationFn: async () => userService.addSkill(Number(selectedSkillId)),
+    mutationFn: async () => userService.addSkill(Number(selectedSkillId), 'BEGINNER'),
     onSuccess: async () => {
       toast.success(t('profile.skill_added'));
       setSelectedSkillId('');
@@ -135,9 +135,11 @@ export default function ProfilePage() {
   }
 
   const profile = profileQuery.data;
+  const skillMap = new Map((allSkillsQuery.data ?? []).map((skill) => [skill.id, skill.name]));
   const assignedSkillIds = new Set((mySkillsQuery.data ?? []).map((skill) => skill.skillId));
   const availableSkills = (allSkillsQuery.data ?? []).filter((skill) => !assignedSkillIds.has(skill.id));
   const activeLanguage = i18n.resolvedLanguage?.startsWith('hi') ? 'hi' : 'en';
+  const referralCode = referralQuery.data?.code ?? '';
 
   return (
     <div className="space-y-6">
@@ -245,7 +247,10 @@ export default function ProfilePage() {
                     variant="info"
                     className="flex items-center gap-2 normal-case tracking-normal"
                   >
-                    <span>{skill.skillName}</span>
+                    <span>{skillMap.get(skill.skillId) ?? `#${skill.skillId}`}</span>
+                    <span className="text-[10px] uppercase text-slate-500 dark:text-slate-300">
+                      {skill.proficiency.toLowerCase()}
+                    </span>
                     <button
                       type="button"
                       onClick={() => removeSkillMutation.mutate(skill.skillId)}
@@ -294,25 +299,32 @@ export default function ProfilePage() {
             <h2 className="text-xl font-semibold text-slate-950 dark:text-white">{t('profile.badges')}</h2>
             {badgesQuery.data?.length ? (
               <div className="space-y-3">
-                {badgesQuery.data.map((badge) => (
-                  <div
-                    key={badge.badgeId}
-                    className="rounded-3xl border border-slate-200/70 p-4 dark:border-slate-800"
-                  >
-                    <div className="flex items-center justify-between gap-3">
-                      <p className="font-semibold text-slate-950 dark:text-white">{badge.badgeName}</p>
-                      <Badge variant="success" className="normal-case tracking-normal">
-                        {badge.badgeIcon}
-                      </Badge>
+                {badgesQuery.data.map((badge) => {
+                  const badgeSkillId = badge.awardedForSkillId ?? badge.skillId;
+
+                  return (
+                    <div
+                      key={badge.badgeId}
+                      className="rounded-3xl border border-slate-200/70 p-4 dark:border-slate-800"
+                    >
+                      <div className="flex items-center justify-between gap-3">
+                        <p className="font-semibold text-slate-950 dark:text-white">{badge.badgeName}</p>
+                        <Badge variant="success" className="normal-case tracking-normal">
+                          {badge.tier}
+                        </Badge>
+                      </div>
+                      {badge.iconUrl ? (
+                        <img src={badge.iconUrl} alt="" className="mt-3 size-10 rounded-xl object-cover" />
+                      ) : null}
+                      <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
+                        {skillMap.get(badgeSkillId) ?? `Skill #${badgeSkillId}`}
+                      </p>
+                      <p className="mt-3 text-xs text-slate-500 dark:text-slate-400">
+                        {format(new Date(badge.earnedAt), 'dd MMM yyyy')}
+                      </p>
                     </div>
-                    <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
-                      {badge.badgeDescription}
-                    </p>
-                    <p className="mt-3 text-xs text-slate-500 dark:text-slate-400">
-                      {format(new Date(badge.earnedAt), 'dd MMM yyyy')}
-                    </p>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             ) : (
               <p className="text-sm text-slate-500 dark:text-slate-400">{t('profile.no_badges')}</p>
@@ -358,13 +370,13 @@ export default function ProfilePage() {
               <p className="text-sm text-slate-500 dark:text-slate-400">{t('profile.referral_code')}</p>
               <div className="mt-3 flex items-center justify-between gap-3">
                 <code className="rounded-2xl bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-900 dark:bg-slate-900 dark:text-slate-100">
-                  {referralQuery.data?.referralCode ?? profile.referralCode}
+                  {referralCode || '-'}
                 </code>
                 <Button
                   variant="outline"
+                  disabled={!referralCode}
                   onClick={async () => {
-                    const code = referralQuery.data?.referralCode ?? profile.referralCode ?? '';
-                    await navigator.clipboard.writeText(code);
+                    await navigator.clipboard.writeText(referralCode);
                     toast.success(t('common.copied'));
                   }}
                 >

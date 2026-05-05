@@ -3,8 +3,8 @@ server:
 spring:
   datasource:
     url: jdbc:postgresql://localhost:5432/skillsync_users
-    username: skillsync
-    password: skillsync
+    username: ${POSTGRES_USER}
+    password: ${POSTGRES_PASSWORD}
   jpa:
     hibernate:
       ddl-auto: validate
@@ -17,9 +17,11 @@ spring:
       max-file-size: 5MB
       max-request-size: 10MB
 cloudinary:
-  cloud-name: cloudinary-cloud-name-placeholder
-  api-key: cloudinary-api-key-placeholder
-  api-secret: cloudinary-api-secret-placeholder
+  cloud-name: ${CLOUDINARY_CLOUD_NAME:}
+  api-key: ${CLOUDINARY_API_KEY:}
+  api-secret: ${CLOUDINARY_API_SECRET:}
 services:
   auth:
     base-url: http://localhost:8081
+internal:
+  service-token: ${INTERNAL_SERVICE_TOKEN}

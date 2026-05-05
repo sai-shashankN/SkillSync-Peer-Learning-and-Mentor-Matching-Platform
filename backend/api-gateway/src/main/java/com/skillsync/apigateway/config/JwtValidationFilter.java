@@ -73,31 +73,58 @@ public class JwtValidationFilter implements GlobalFilter, Ordered {
             return true;
         }
 
+        if (path.startsWith("/auth/internal/")) {
+            return false;
+        }
+
         if ("/auth".equals(path) || path.startsWith("/auth/")) {
             return true;
         }
 
+        if (HttpMethod.POST.equals(method) && "/payments/webhooks/paypal".equals(path)) {
+            return true;
+        }
+
         if (HttpMethod.GET.equals(method)) {
-            // /mentors/me and /mentors/apply require auth
-            if ("/mentors/me".equals(path) || "/mentors/apply".equals(path)) {
-                return false;
-            }
             return "/skills".equals(path)
                     || path.startsWith("/skills/")
                     || "/mentors".equals(path)
-                    || path.startsWith("/mentors/");
+                    || isPublicMentorGet(path)
+                    || path.startsWith("/reviews/mentor/")
+                    || "/groups".equals(path)
+                    || path.matches("/groups/\\d+");
         }
 
         return false;
     }
 
+    private boolean isPublicMentorGet(String path) {
+        if (!path.startsWith("/mentors/")) {
+            return false;
+        }
+        if ("/mentors/me".equals(path)
+                || path.endsWith("/waitlist")
+                || path.endsWith("/unavailability")
+                || path.contains("/internal/")) {
+            return false;
+        }
+        return path.matches("/mentors/\\d+") || path.matches("/mentors/\\d+/availability");
+    }
+
     private ServerWebExchange withUserHeaders(ServerWebExchange exchange, JsonNode principal) {
         ServerHttpRequest mutatedRequest = exchange.getRequest().mutate()
-                .header("X-User-Id", principal.path("userId").asText(""))
-                .header("X-User-Email", principal.path("email").asText(""))
-                .header("X-User-Name", principal.path("name").asText(""))
-                .header("X-User-Roles", joinArray(principal.path("roles")))
-                .header("X-User-Permissions", joinArray(principal.path("permissions")))
+                .headers(headers -> {
+                    headers.remove("X-User-Id");
+                    headers.remove("X-User-Email");
+                    headers.remove("X-User-Name");
+                    headers.remove("X-User-Roles");
+                    headers.remove("X-User-Permissions");
+                    headers.set("X-User-Id", principal.path("userId").asText(""));
+                    headers.set("X-User-Email", principal.path("email").asText(""));
+                    headers.set("X-User-Name", principal.path("name").asText(""));
+                    headers.set("X-User-Roles", joinArray(principal.path("roles")));
+                    headers.set("X-User-Permissions", joinArray(principal.path("permissions")));
+                })
                 .build();
         return exchange.mutate().request(mutatedRequest).build();
     }

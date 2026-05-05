@@ -128,7 +128,12 @@ export default function GroupBrowsePage() {
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {groupsQuery.data.content.map((group) => {
             const isJoined = joinedGroupIds.has(group.id);
-            const isFull = group.memberCount >= group.maxMembers;
+            const maxMembers = group.maxMembers ?? null;
+            const isFull = maxMembers !== null && group.memberCount >= maxMembers;
+            const capacityLabel =
+              maxMembers === null
+                ? `${group.memberCount}/${t('common.unavailable_short', { defaultValue: 'N/A' })}`
+                : `${group.memberCount}/${maxMembers}`;
 
             return (
               <Card key={group.id} className="flex h-full flex-col gap-4">
@@ -149,7 +154,7 @@ export default function GroupBrowsePage() {
                 <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
                   <Users className="size-4 text-[var(--color-primary)]" />
                   <span>
-                    {group.memberCount}/{group.maxMembers} {t('common.members')}
+                    {capacityLabel} {t('common.members')}
                   </span>
                 </div>
 

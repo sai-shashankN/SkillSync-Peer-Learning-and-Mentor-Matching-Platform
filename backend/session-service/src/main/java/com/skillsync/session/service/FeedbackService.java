@@ -67,7 +67,7 @@ public class FeedbackService {
         if (session.getLearnerId().equals(userId)) {
             return "LEARNER";
         }
-        if (session.getMentorId().equals(userId)) {
+        if (sessionService.isMentorOwner(session, userId)) {
             return "MENTOR";
         }
         throw new UnauthorizedException("You are not allowed to submit feedback for this session");

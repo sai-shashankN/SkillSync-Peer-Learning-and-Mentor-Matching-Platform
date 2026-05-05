@@ -1,6 +1,7 @@
 package com.skillsync.skill.controller;
 
 import com.skillsync.common.dto.ApiResponse;
+import com.skillsync.common.security.InternalServiceAuth;
 import com.skillsync.skill.dto.CategoryResponse;
 import com.skillsync.skill.dto.CreateSkillRequest;
 import com.skillsync.skill.dto.SkillResponse;
@@ -12,6 +13,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -21,6 +23,7 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -30,6 +33,8 @@ public class SkillController {
 
     private final SkillService skillService;
     private final CategoryService categoryService;
+    @Value("${internal.service-token:}")
+    private String internalServiceToken;
 
     @PostMapping
     public ResponseEntity<ApiResponse<SkillResponse>> createSkill(
@@ -76,7 +81,11 @@ public class SkillController {
     }
 
     @GetMapping("/internal/validate")
-    public ResponseEntity<ApiResponse<List<SkillResponse>>> validateSkills(@RequestParam(name = "ids") List<Long> ids) {
+    public ResponseEntity<ApiResponse<List<SkillResponse>>> validateSkills(
+            @RequestParam(name = "ids") List<Long> ids,
+            @RequestHeader(value = InternalServiceAuth.HEADER_NAME, required = false) String serviceToken
+    ) {
+        InternalServiceAuth.requireValidToken(serviceToken, internalServiceToken);
         return ResponseEntity.ok(ApiResponse.ok("Skills validated successfully", skillService.getSkillsByIds(ids)));
     }
 }

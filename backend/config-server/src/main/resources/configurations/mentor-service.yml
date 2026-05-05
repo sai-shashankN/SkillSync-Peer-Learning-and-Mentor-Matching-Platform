@@ -3,8 +3,8 @@ server:
 spring:
   datasource:
     url: jdbc:postgresql://localhost:5432/skillsync_mentors
-    username: skillsync
-    password: skillsync
+    username: ${POSTGRES_USER}
+    password: ${POSTGRES_PASSWORD}
   data:
     redis:
       host: localhost
@@ -16,3 +16,5 @@ spring:
   flyway:
     enabled: true
     locations: classpath:db/migration
+internal:
+  service-token: ${INTERNAL_SERVICE_TOKEN}

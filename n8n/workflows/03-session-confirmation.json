@@ -40,7 +40,16 @@
             ],
             "parameters": {
                 "method": "GET",
-                "url": "=http://host.docker.internal:8085/sessions/internal/{{$node['Normalize Payload'].json.sessionId}}"
+                "url": "=http://host.docker.internal:8085/sessions/internal/{{$node['Normalize Payload'].json.sessionId}}",
+                "sendHeaders": true,
+                "headerParameters": {
+                    "parameters": [
+                        {
+                            "name": "X-Internal-Service-Token",
+                            "value": "={{$env.INTERNAL_SERVICE_TOKEN}}"
+                        }
+                    ]
+                }
             }
         },
         {
@@ -67,7 +76,16 @@
             ],
             "parameters": {
                 "method": "GET",
-                "url": "=http://host.docker.internal:8082/users/internal/{{$node['Normalize Payload'].json.mentorId}}"
+                "url": "=http://host.docker.internal:8082/users/internal/{{$node['Normalize Payload'].json.mentorId}}",
+                "sendHeaders": true,
+                "headerParameters": {
+                    "parameters": [
+                        {
+                            "name": "X-Internal-Service-Token",
+                            "value": "={{$env.INTERNAL_SERVICE_TOKEN}}"
+                        }
+                    ]
+                }
             }
         },
         {
@@ -81,7 +99,16 @@
             ],
             "parameters": {
                 "method": "GET",
-                "url": "=http://host.docker.internal:8082/users/internal/{{$node['Normalize Payload'].json.learnerId}}"
+                "url": "=http://host.docker.internal:8082/users/internal/{{$node['Normalize Payload'].json.learnerId}}",
+                "sendHeaders": true,
+                "headerParameters": {
+                    "parameters": [
+                        {
+                            "name": "X-Internal-Service-Token",
+                            "value": "={{$env.INTERNAL_SERVICE_TOKEN}}"
+                        }
+                    ]
+                }
             }
         },
         {
@@ -145,6 +172,15 @@
             "parameters": {
                 "method": "PATCH",
                 "url": "=http://host.docker.internal:8085/sessions/internal/{{$node['Normalize Payload'].json.sessionId}}/integration",
+                "sendHeaders": true,
+                "headerParameters": {
+                    "parameters": [
+                        {
+                            "name": "X-Internal-Service-Token",
+                            "value": "={{$env.INTERNAL_SERVICE_TOKEN}}"
+                        }
+                    ]
+                },
                 "sendBody": true,
                 "contentType": "json",
                 "specifyBody": "json",

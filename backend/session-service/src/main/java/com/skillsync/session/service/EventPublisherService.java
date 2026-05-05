@@ -9,6 +9,7 @@ import com.skillsync.common.event.SessionCancelledEvent;
 import com.skillsync.common.event.SessionCompletedEvent;
 import com.skillsync.common.event.SessionRejectedEvent;
 import com.skillsync.common.util.EventFactory;
+import com.skillsync.session.client.MentorClient;
 import com.skillsync.session.model.Session;
 import com.skillsync.session.model.SessionFeedback;
 import lombok.RequiredArgsConstructor;
@@ -23,13 +24,14 @@ public class EventPublisherService {
     private static final String SERVICE_NAME = "session-service";
 
     private final RabbitTemplate rabbitTemplate;
+    private final MentorClient mentorClient;
 
     public void publishSessionBooked(Session session) {
         BaseEvent baseEvent = buildBaseEvent(RabbitMQConstants.RK_SESSION_BOOKED);
         SessionBookedEvent event = new SessionBookedEvent(
                 baseEvent,
                 session.getId(),
-                session.getMentorId(),
+                resolveMentorUserId(session),
                 session.getLearnerId(),
                 session.getStartAt(),
                 session.getAmount()
@@ -42,7 +44,7 @@ public class EventPublisherService {
         SessionAcceptedEvent event = new SessionAcceptedEvent(
                 baseEvent,
                 session.getId(),
-                session.getMentorId(),
+                resolveMentorUserId(session),
                 session.getLearnerId(),
                 session.getStartAt()
         );
@@ -54,7 +56,7 @@ public class EventPublisherService {
         SessionRejectedEvent event = new SessionRejectedEvent(
                 baseEvent,
                 session.getId(),
-                session.getMentorId(),
+                resolveMentorUserId(session),
                 session.getLearnerId()
         );
         rabbitTemplate.convertAndSend(RabbitMQConstants.EXCHANGE, RabbitMQConstants.RK_SESSION_REJECTED, event);
@@ -65,7 +67,7 @@ public class EventPublisherService {
         SessionCompletedEvent event = new SessionCompletedEvent(
                 baseEvent,
                 session.getId(),
-                session.getMentorId(),
+                resolveMentorUserId(session),
                 session.getLearnerId()
         );
         rabbitTemplate.convertAndSend(RabbitMQConstants.EXCHANGE, RabbitMQConstants.RK_SESSION_COMPLETED, event);
@@ -82,7 +84,7 @@ public class EventPublisherService {
         ReviewSubmittedEvent event = new ReviewSubmittedEvent(
                 baseEvent,
                 feedback.getId(),
-                session.getMentorId(),
+                resolveMentorUserId(session),
                 session.getLearnerId(),
                 feedback.getRating()
         );
@@ -91,5 +93,9 @@ public class EventPublisherService {
 
     private BaseEvent buildBaseEvent(String eventType) {
         return EventFactory.create(eventType, SERVICE_NAME, MDC.get("correlationId"));
+    }
+
+    private Long resolveMentorUserId(Session session) {
+        return mentorClient.getMentor(session.getMentorId()).userId();
     }
 }

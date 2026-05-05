@@ -56,7 +56,10 @@ export default function GroupDetailPage() {
 
   const memberMap = new Map<number, string>();
   if (groupQuery.data) {
-    memberMap.set(groupQuery.data.creatorId, `${t('groups.creator')} #${groupQuery.data.creatorId}`);
+    groupQuery.data.members.forEach((member) => {
+      memberMap.set(member.userId, `${member.role} #${member.userId}`);
+    });
+    memberMap.set(groupQuery.data.createdBy, `${t('groups.creator')} #${groupQuery.data.createdBy}`);
   }
   sortedMessages.forEach((item) => {
     memberMap.set(item.senderId, getSenderName(item.senderId, item.senderName));

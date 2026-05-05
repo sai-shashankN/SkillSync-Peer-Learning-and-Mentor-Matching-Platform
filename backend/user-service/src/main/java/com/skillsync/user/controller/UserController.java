@@ -2,6 +2,7 @@ package com.skillsync.user.controller;
 
 import com.skillsync.common.dto.ApiResponse;
 import com.skillsync.common.exception.BadRequestException;
+import com.skillsync.common.security.InternalServiceAuth;
 import com.skillsync.user.dto.AddUserSkillRequest;
 import com.skillsync.user.dto.ApplyReferralRequest;
 import com.skillsync.user.dto.AvatarResponse;
@@ -24,6 +25,7 @@ import java.util.Arrays;
 import java.util.List;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -31,6 +33,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -45,19 +48,22 @@ public class UserController {
     private final UserSkillService userSkillService;
     private final AvatarService avatarService;
     private final ReferralService referralService;
+    private final String internalServiceToken;
 
     public UserController(
             ProfileService profileService,
             PreferencesService preferencesService,
             UserSkillService userSkillService,
             AvatarService avatarService,
-            ReferralService referralService
+            ReferralService referralService,
+            @Value("${internal.service-token:}") String internalServiceToken
     ) {
         this.profileService = profileService;
         this.preferencesService = preferencesService;
         this.userSkillService = userSkillService;
         this.avatarService = avatarService;
         this.referralService = referralService;
+        this.internalServiceToken = internalServiceToken;
     }
 
     @GetMapping("/me")
@@ -73,7 +79,11 @@ public class UserController {
     }
 
     @GetMapping("/internal/{id}")
-    public ResponseEntity<ApiResponse<UserSummaryResponse>> getInternalUserById(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<UserSummaryResponse>> getInternalUserById(
+            @PathVariable Long id,
+            @RequestHeader(value = InternalServiceAuth.HEADER_NAME, required = false) String serviceToken
+    ) {
+        InternalServiceAuth.requireValidToken(serviceToken, internalServiceToken);
         UserSummaryResponse response = profileService.getInternalUserSummary(id);
         return ResponseEntity.ok(ApiResponse.ok("Internal user fetched successfully", response));
     }

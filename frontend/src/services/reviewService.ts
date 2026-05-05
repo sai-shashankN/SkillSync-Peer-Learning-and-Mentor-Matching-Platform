@@ -18,10 +18,13 @@ export interface Review {
 }
 
 export interface UserBadge {
+  userId: number;
   badgeId: number;
   badgeName: string;
-  badgeDescription: string;
-  badgeIcon: string;
+  skillId: number;
+  tier: string;
+  iconUrl: string | null;
+  awardedForSkillId: number | null;
   earnedAt: string;
 }
 

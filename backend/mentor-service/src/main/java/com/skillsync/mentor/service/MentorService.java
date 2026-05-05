@@ -216,6 +216,10 @@ public class MentorService {
                 .orElseThrow(() -> new ResourceNotFoundException("Mentor", "id", id));
     }
 
+    public MentorResponse toMentorResponse(Mentor mentor) {
+        return mentorMapper.toMentorResponse(mentor, null);
+    }
+
     public void assertOwner(Mentor mentor, Long userId) {
         if (!mentor.getUserId().equals(userId)) {
             throw new UnauthorizedException("You are not allowed to modify this mentor");

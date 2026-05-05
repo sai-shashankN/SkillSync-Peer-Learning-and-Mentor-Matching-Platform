@@ -88,7 +88,7 @@ export default function CreateGroupModal({
         <Input
           type="number"
           min={2}
-          max={50}
+          max={200}
           label={t('groups.max_members')}
           value={values.maxMembers}
           onChange={(event) =>

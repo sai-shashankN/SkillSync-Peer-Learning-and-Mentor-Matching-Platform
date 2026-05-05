@@ -2,11 +2,15 @@ package com.skillsync.mentor.client;
 
 import com.skillsync.common.dto.ApiResponse;
 import com.skillsync.common.exception.BadRequestException;
+import com.skillsync.common.security.InternalServiceAuth;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
@@ -18,6 +22,8 @@ import org.springframework.web.client.RestTemplate;
 public class SkillValidationClient {
 
     private final RestTemplate restTemplate;
+    @Value("${internal.service-token:}")
+    private String internalServiceToken;
 
     public void validateSkillIds(Set<Long> skillIds) {
         if (skillIds == null || skillIds.isEmpty()) {
@@ -29,12 +35,14 @@ public class SkillValidationClient {
                 .map(String::valueOf)
                 .collect(Collectors.joining(","));
         String url = "http://skill-service/skills/internal/validate?ids=" + idsParam;
+        HttpHeaders headers = new HttpHeaders();
+        headers.set(InternalServiceAuth.HEADER_NAME, internalServiceToken);
 
         try {
             ResponseEntity<ApiResponse<List<SkillValidationResult>>> response = restTemplate.exchange(
                     url,
                     HttpMethod.GET,
-                    null,
+                    new HttpEntity<>(headers),
                     new ParameterizedTypeReference<>() {
                     }
             );

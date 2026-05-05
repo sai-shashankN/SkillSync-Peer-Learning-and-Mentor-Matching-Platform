@@ -11,6 +11,7 @@ public class PayPalConfig {
 
     private String clientId;
     private String clientSecret;
+    private String webhookId;
     private String baseUrl;
     private String currency = "INR";
     private String brandName = "SkillSync";

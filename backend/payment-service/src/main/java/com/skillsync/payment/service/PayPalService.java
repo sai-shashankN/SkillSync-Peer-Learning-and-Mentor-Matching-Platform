@@ -117,6 +117,38 @@ public class PayPalService {
         return payPalConfig.getCurrency();
     }
 
+    public void verifyWebhookSignature(String payload, HttpHeaders headers) {
+        if (!StringUtils.hasText(payPalConfig.getWebhookId())) {
+            throw new BadRequestException("PayPal webhook verification is not configured");
+        }
+
+        try {
+            ObjectNode verificationPayload = objectMapper.createObjectNode();
+            verificationPayload.put("auth_algo", requireHeader(headers, "PayPal-Auth-Algo"));
+            verificationPayload.put("cert_url", requireHeader(headers, "PayPal-Cert-Url"));
+            verificationPayload.put("transmission_id", requireHeader(headers, "PayPal-Transmission-Id"));
+            verificationPayload.put("transmission_sig", requireHeader(headers, "PayPal-Transmission-Sig"));
+            verificationPayload.put("transmission_time", requireHeader(headers, "PayPal-Transmission-Time"));
+            verificationPayload.put("webhook_id", payPalConfig.getWebhookId());
+            verificationPayload.set("webhook_event", objectMapper.readTree(payload));
+
+            JsonNode response = exchangeJson(
+                    "/v1/notifications/verify-webhook-signature",
+                    HttpMethod.POST,
+                    authorizedJsonEntity(verificationPayload),
+                    "Unable to verify PayPal webhook signature"
+            );
+
+            if (!"SUCCESS".equalsIgnoreCase(response.path("verification_status").asText())) {
+                throw new BadRequestException("Invalid PayPal webhook signature");
+            }
+        } catch (BadRequestException ex) {
+            throw ex;
+        } catch (Exception ex) {
+            throw new BadRequestException("Unable to verify PayPal webhook signature");
+        }
+    }
+
     private JsonNode createOrderPayload(BigDecimal amount, String currency, String customId) {
         ObjectNode payload = objectMapper.createObjectNode();
         payload.put("intent", "CAPTURE");
@@ -285,6 +317,14 @@ public class PayPalService {
 
     private String formatAmount(BigDecimal amount) {
         return amount.setScale(2, RoundingMode.HALF_UP).toPlainString();
+    }
+
+    private String requireHeader(HttpHeaders headers, String name) {
+        String value = headers.getFirst(name);
+        if (!StringUtils.hasText(value)) {
+            throw new BadRequestException("Missing PayPal webhook header: " + name);
+        }
+        return value;
     }
 
     private record OAuthToken(String value, Instant expiresAt) {

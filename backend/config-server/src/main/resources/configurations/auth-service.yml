@@ -3,8 +3,8 @@ server:
 spring:
   datasource:
     url: jdbc:postgresql://localhost:5432/skillsync_auth
-    username: skillsync
-    password: skillsync
+    username: ${POSTGRES_USER}
+    password: ${POSTGRES_PASSWORD}
   jpa:
     hibernate:
       ddl-auto: validate
@@ -13,12 +13,14 @@ spring:
     enabled: true
     locations: classpath:db/migration
 jwt:
-  secret: skillsync-jwt-secret-key-for-development-only-change-in-prod-must-be-at-least-256-bits
+  secret: ${JWT_SECRET}
   access-token-expiry-ms: 900000
   refresh-token-expiry-ms: 604800000
 oauth2:
   google:
-    client-id: 272230001389-v9b7bkthiupbl1rm4nffq06gm3crrs9u.apps.googleusercontent.com
+    client-id: ${GOOGLE_CLIENT_ID:}
   github:
-    client-id: Ov23li8rLtI3EurhRc27
-    client-secret: db95dde234803cae3953a6b4428223c7ebe6a37d
+    client-id: ${GITHUB_CLIENT_ID:}
+    client-secret: ${GITHUB_CLIENT_SECRET:}
+internal:
+  service-token: ${INTERNAL_SERVICE_TOKEN}

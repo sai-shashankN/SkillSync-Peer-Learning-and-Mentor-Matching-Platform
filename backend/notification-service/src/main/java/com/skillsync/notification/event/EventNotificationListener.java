@@ -3,6 +3,7 @@ package com.skillsync.notification.event;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.skillsync.common.config.RabbitMQConstants;
+import com.skillsync.notification.service.EventPayloadEnricher;
 import com.skillsync.notification.service.NotificationService;
 import com.skillsync.notification.service.WebhookForwarderService;
 import java.util.Map;
@@ -18,6 +19,7 @@ public class EventNotificationListener {
 
     private final NotificationService notificationService;
     private final WebhookForwarderService webhookForwarderService;
+    private final EventPayloadEnricher eventPayloadEnricher;
     private final ObjectMapper objectMapper;
 
     @RabbitListener(queues = RabbitMQConstants.NOTIFICATION_QUEUE)
@@ -29,6 +31,7 @@ public class EventNotificationListener {
             return;
         }
 
+        payload = eventPayloadEnricher.enrich(eventType, payload);
         String dataJson = toJson(payload);
         String eventId = stringValue(base.get("eventId"));
 
@@ -89,11 +92,24 @@ public class EventNotificationListener {
                     dataJson,
                     eventId
             );
-            case RabbitMQConstants.RK_SESSION_CANCELLED -> log.warn(
-                    "Skipping session cancellation notification because target user is unavailable in payload. eventId={}, sessionId={}",
-                    eventId,
-                    longValue(payload.get("sessionId"))
-            );
+            case RabbitMQConstants.RK_SESSION_CANCELLED -> {
+                createSingleNotification(
+                        longValue(payload.get("learnerId")),
+                        "SESSION_CANCELLED",
+                        "Session Cancelled",
+                        "Your session has been cancelled.",
+                        dataJson,
+                        buildRecipientDedupeKey(eventId, longValue(payload.get("learnerId")))
+                );
+                createSingleNotification(
+                        longValue(payload.get("mentorId")),
+                        "SESSION_CANCELLED",
+                        "Session Cancelled",
+                        "Your session has been cancelled.",
+                        dataJson,
+                        buildRecipientDedupeKey(eventId, longValue(payload.get("mentorId")))
+                );
+            }
             case RabbitMQConstants.RK_SESSION_COMPLETED -> {
                 createSingleNotification(
                         longValue(payload.get("learnerId")),
@@ -120,10 +136,13 @@ public class EventNotificationListener {
                     dataJson,
                     eventId
             );
-            case RabbitMQConstants.RK_PAYMENT_REFUNDED -> log.warn(
-                    "Skipping payment refunded notification because payerId is unavailable in payload. eventId={}, paymentId={}",
-                    eventId,
-                    longValue(payload.get("paymentId"))
+            case RabbitMQConstants.RK_PAYMENT_REFUNDED -> createSingleNotification(
+                    longValue(payload.get("payerId")),
+                    "PAYMENT_REFUNDED",
+                    "Payment Refunded",
+                    "Your payment refund has been processed.",
+                    dataJson,
+                    eventId
             );
             case RabbitMQConstants.RK_REVIEW_SUBMITTED -> createSingleNotification(
                     longValue(payload.get("mentorId")),

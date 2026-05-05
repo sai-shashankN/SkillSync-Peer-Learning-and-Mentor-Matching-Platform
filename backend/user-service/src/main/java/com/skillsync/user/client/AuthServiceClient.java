@@ -2,6 +2,7 @@ package com.skillsync.user.client;
 
 import com.skillsync.common.dto.ApiResponse;
 import com.skillsync.common.exception.ResourceNotFoundException;
+import com.skillsync.common.security.InternalServiceAuth;
 import com.skillsync.user.dto.AuthUserSummaryResponse;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
@@ -17,17 +18,23 @@ public class AuthServiceClient {
             new ParameterizedTypeReference<>() {};
 
     private final RestClient restClient;
+    private final String internalServiceToken;
 
-    public AuthServiceClient(@Value("${services.auth.base-url:http://localhost:8081}") String authServiceBaseUrl) {
+    public AuthServiceClient(
+            @Value("${services.auth.base-url:http://localhost:8081}") String authServiceBaseUrl,
+            @Value("${internal.service-token:}") String internalServiceToken
+    ) {
         this.restClient = RestClient.builder()
                 .baseUrl(authServiceBaseUrl)
                 .build();
+        this.internalServiceToken = internalServiceToken;
     }
 
     public AuthUserSummaryResponse getUserSummary(Long userId) {
         try {
             ApiResponse<AuthUserSummaryResponse> response = restClient.get()
                     .uri("/auth/internal/users/{id}", userId)
+                    .header(InternalServiceAuth.HEADER_NAME, internalServiceToken)
                     .retrieve()
                     .body(AUTH_USER_RESPONSE);
 

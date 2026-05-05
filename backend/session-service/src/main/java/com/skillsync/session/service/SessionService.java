@@ -5,6 +5,7 @@ import com.skillsync.common.exception.BadRequestException;
 import com.skillsync.common.exception.ConflictException;
 import com.skillsync.common.exception.ResourceNotFoundException;
 import com.skillsync.common.exception.UnauthorizedException;
+import com.skillsync.session.client.MentorClient;
 import com.skillsync.session.dto.CreateSessionRequest;
 import com.skillsync.session.dto.SessionDetailResponse;
 import com.skillsync.session.dto.SessionInternalResponse;
@@ -38,6 +39,7 @@ public class SessionService {
     private final SessionMapper sessionMapper;
     private final BookingReferenceGenerator bookingReferenceGenerator;
     private final EventPublisherService eventPublisherService;
+    private final MentorClient mentorClient;
 
     @Transactional
     public SessionResponse createSession(Long learnerId, CreateSessionRequest request) {
@@ -242,18 +244,25 @@ public class SessionService {
         Instant cutoff = now.plus(withinMinutes, java.time.temporal.ChronoUnit.MINUTES);
         List<Session> sessions = sessionRepository.findByStatusAndStartAtBetween(SessionStatus.ACCEPTED, now, cutoff);
         return sessions.stream()
-                .map(session -> new SessionInternalResponse(
-                        session.getId(),
-                        session.getMentorId(),
-                        session.getLearnerId(),
-                        session.getSkillId(),
-                        session.getStartAt(),
-                        session.getEndAt(),
-                        session.getStatus().name(),
-                        session.getZoomLink(),
-                        session.getCalendarEventId()
-                ))
+                .map(this::toInternalResponse)
                 .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public SessionInternalResponse toInternalResponse(Session session) {
+        return SessionInternalResponse.builder()
+                .id(session.getId())
+                .mentorId(session.getMentorId())
+                .mentorUserId(resolveMentorUserId(session))
+                .learnerId(session.getLearnerId())
+                .skillId(session.getSkillId())
+                .startAt(session.getStartAt())
+                .endAt(session.getEndAt())
+                .amount(session.getAmount())
+                .status(session.getStatus().name())
+                .zoomLink(session.getZoomLink())
+                .calendarEventId(session.getCalendarEventId())
+                .build();
     }
 
     private Page<Session> getLearnerSessions(Long userId, SessionStatus status, Pageable pageable) {
@@ -263,9 +272,10 @@ public class SessionService {
     }
 
     private Page<Session> getMentorSessions(Long userId, SessionStatus status, Pageable pageable) {
+        Long mentorProfileId = mentorClient.getMentorByUserId(userId).id();
         return status == null
-                ? sessionRepository.findByMentorId(userId, pageable)
-                : sessionRepository.findByMentorIdAndStatusIn(userId, List.of(status), pageable);
+                ? sessionRepository.findByMentorId(mentorProfileId, pageable)
+                : sessionRepository.findByMentorIdAndStatusIn(mentorProfileId, List.of(status), pageable);
     }
 
     private PagedResponse<SessionSummaryResponse> mapPage(Page<Session> page) {
@@ -305,20 +315,32 @@ public class SessionService {
     }
 
     private void assertAccessible(Session session, Long userId, boolean admin) {
-        if (!admin && !session.getLearnerId().equals(userId) && !session.getMentorId().equals(userId)) {
+        if (!canAccess(session, userId, admin)) {
             throw new UnauthorizedException("You are not allowed to access this session");
         }
     }
 
     private void assertOwnerOrAdmin(Session session, Long userId, boolean admin) {
-        if (!admin && !session.getLearnerId().equals(userId) && !session.getMentorId().equals(userId)) {
+        if (!canAccess(session, userId, admin)) {
             throw new UnauthorizedException("You are not allowed to update this session");
         }
     }
 
-    private void assertMentorOwner(Session session, Long mentorId) {
-        if (!session.getMentorId().equals(mentorId)) {
+    public boolean canAccess(Session session, Long userId, boolean admin) {
+        return admin || session.getLearnerId().equals(userId) || isMentorOwner(session, userId);
+    }
+
+    public boolean isMentorOwner(Session session, Long userId) {
+        return resolveMentorUserId(session).equals(userId);
+    }
+
+    private void assertMentorOwner(Session session, Long userId) {
+        if (!isMentorOwner(session, userId)) {
             throw new UnauthorizedException("You are not allowed to update this session");
         }
+    }
+
+    private Long resolveMentorUserId(Session session) {
+        return mentorClient.getMentor(session.getMentorId()).userId();
     }
 }

@@ -7,13 +7,23 @@ export interface GroupSummary {
   slug: string;
   description: string;
   memberCount: number;
-  maxMembers: number;
+  maxMembers?: number;
   skillIds: number[];
+  createdBy?: number;
+  isActive?: boolean;
   createdAt: string;
 }
 
 export interface GroupDetail extends GroupSummary {
-  creatorId: number;
+  createdBy: number;
+  maxMembers: number;
+  members: GroupMember[];
+}
+
+export interface GroupMember {
+  userId: number;
+  role: string;
+  joinedAt: string;
 }
 
 export interface GroupMessage {

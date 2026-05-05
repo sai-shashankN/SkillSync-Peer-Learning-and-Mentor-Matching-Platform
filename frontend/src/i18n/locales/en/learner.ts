@@ -118,6 +118,8 @@ const learnerEn = {
       booked: 'Booked',
       scheduled: 'Scheduled',
       pending: 'Pending',
+      paid: 'Paid',
+      accepted: 'Accepted',
       payment_pending: 'Payment pending',
       active: 'Active',
     },

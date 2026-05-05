@@ -3,13 +3,19 @@ import type { ApiResponse } from '../types';
 
 export interface UserProfile {
   id: number;
+  userId: number;
   name: string;
   email: string;
   avatarUrl: string | null;
   bio: string | null;
   phone: string | null;
+  timezone?: string | null;
+  language?: string | null;
+  darkMode?: boolean;
+  marketingOptIn?: boolean;
+  profileVisibility?: string;
   roles: string[];
-  referralCode?: string;
+  skills?: UserSkill[];
   createdAt: string;
 }
 
@@ -20,8 +26,9 @@ export interface UpdateProfileRequest {
 }
 
 export interface UserSkill {
+  id: number;
   skillId: number;
-  skillName: string;
+  proficiency: 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED';
 }
 
 export const userService = {
@@ -36,10 +43,11 @@ export const userService = {
     });
   },
   getMySkills: () => api.get<ApiResponse<UserSkill[]>>('/users/me/skills'),
-  addSkill: (skillId: number) => api.post<ApiResponse<UserSkill>>('/users/me/skills', { skillId }),
+  addSkill: (skillId: number, proficiency: UserSkill['proficiency'] = 'BEGINNER') =>
+    api.post<ApiResponse<UserSkill>>('/users/me/skills', { skillId, proficiency }),
   removeSkill: (skillId: number) => api.delete<ApiResponse<void>>(`/users/me/skills/${skillId}`),
   getReferralCode: () =>
-    api.get<ApiResponse<{ referralCode: string }>>('/users/me/referral-code'),
+    api.get<ApiResponse<{ code: string; createdAt: string }>>('/users/me/referral-code'),
   applyReferral: (code: string) =>
     api.post<ApiResponse<unknown>>('/users/apply-referral', { referralCode: code }),
 };

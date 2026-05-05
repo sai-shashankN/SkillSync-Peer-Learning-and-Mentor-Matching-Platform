@@ -26,7 +26,7 @@ public class EventPublisherService {
         ReviewSubmittedEvent event = new ReviewSubmittedEvent(
                 baseEvent,
                 review.getId(),
-                metadata.mentorId(),
+                resolveMentorRecipientId(metadata),
                 metadata.learnerId(),
                 review.getRating()
         );
@@ -41,5 +41,9 @@ public class EventPublisherService {
 
     private BaseEvent buildBaseEvent(String eventType) {
         return EventFactory.create(eventType, SERVICE_NAME, MDC.get("correlationId"));
+    }
+
+    private Long resolveMentorRecipientId(SessionClient.SessionSnapshot metadata) {
+        return metadata.mentorUserId() != null ? metadata.mentorUserId() : metadata.mentorId();
     }
 }

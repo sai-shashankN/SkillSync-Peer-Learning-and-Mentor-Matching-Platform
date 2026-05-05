@@ -15,7 +15,14 @@ const currencyFormatter = new Intl.NumberFormat('en-IN', {
   maximumFractionDigits: 0,
 });
 
-const statusOptions = ['ALL', 'PENDING', 'CONFIRMED', 'COMPLETED', 'CANCELLED'] as const;
+const statusOptions = ['ALL', 'PAID', 'ACCEPTED', 'COMPLETED', 'CANCELLED'] as const;
+const statusOptionLabels: Record<(typeof statusOptions)[number], string> = {
+  ALL: 'All',
+  PAID: 'Paid',
+  ACCEPTED: 'Accepted',
+  COMPLETED: 'Completed',
+  CANCELLED: 'Cancelled',
+};
 
 export default function MentorSessionsPage() {
   const { t } = useTranslation();
@@ -109,7 +116,7 @@ export default function MentorSessionsPage() {
               variant={status === option ? 'primary' : 'outline'}
               onClick={() => setStatus(option)}
             >
-              {t(`mentor.filter_${option.toLowerCase()}`)}
+              {t(`mentor.filter_${option.toLowerCase()}`, { defaultValue: statusOptionLabels[option] })}
             </Button>
           ))}
         </div>
@@ -117,61 +124,65 @@ export default function MentorSessionsPage() {
 
       {sessionsQuery.data?.content.length ? (
         <div className="space-y-4">
-          {sessionsQuery.data.content.map((session) => (
-            <Card key={session.id} className="space-y-4">
-              <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                <div className="space-y-2">
-                  <p className="text-sm text-slate-500 dark:text-slate-400">
-                    {format(new Date(session.startAt), 'dd MMM yyyy, hh:mm a')}
-                  </p>
-                  <h2 className="text-lg font-semibold text-slate-950 dark:text-white">{session.topic}</h2>
-                  <p className="text-sm text-slate-600 dark:text-slate-300">#{session.learnerId}</p>
+          {sessionsQuery.data.content.map((session) => {
+            const normalizedStatus = session.status.toUpperCase();
+
+            return (
+              <Card key={session.id} className="space-y-4">
+                <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                  <div className="space-y-2">
+                    <p className="text-sm text-slate-500 dark:text-slate-400">
+                      {format(new Date(session.startAt), 'dd MMM yyyy, hh:mm a')}
+                    </p>
+                    <h2 className="text-lg font-semibold text-slate-950 dark:text-white">{session.topic}</h2>
+                    <p className="text-sm text-slate-600 dark:text-slate-300">#{session.learnerId}</p>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-3">
+                    <SessionStatusBadge status={session.status} />
+                    <span className="font-medium text-slate-700 dark:text-slate-200">
+                      {currencyFormatter.format(session.amount)}
+                    </span>
+                  </div>
                 </div>
 
-                <div className="flex flex-wrap items-center gap-3">
-                  <SessionStatusBadge status={session.status} />
-                  <span className="font-medium text-slate-700 dark:text-slate-200">
-                    {currencyFormatter.format(session.amount)}
-                  </span>
-                </div>
-              </div>
+                <div className="flex flex-wrap gap-3">
+                  {normalizedStatus === 'PAID' ? (
+                    <>
+                      <Button
+                        size="sm"
+                        isLoading={acceptMutation.isPending && acceptMutation.variables === session.id}
+                        onClick={() => acceptMutation.mutate(session.id)}
+                      >
+                        {t('mentor.accept')}
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setRejectingSessionId(session.id);
+                          setRejectReason('');
+                        }}
+                      >
+                        {t('mentor.reject')}
+                      </Button>
+                    </>
+                  ) : null}
 
-              <div className="flex flex-wrap gap-3">
-                {session.status === 'PENDING' ? (
-                  <>
-                    <Button
-                      size="sm"
-                      isLoading={acceptMutation.isPending && acceptMutation.variables === session.id}
-                      onClick={() => acceptMutation.mutate(session.id)}
-                    >
-                      {t('mentor.accept')}
-                    </Button>
+                  {normalizedStatus === 'ACCEPTED' ? (
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => {
-                        setRejectingSessionId(session.id);
-                        setRejectReason('');
-                      }}
+                      isLoading={completeMutation.isPending && completeMutation.variables === session.id}
+                      onClick={() => completeMutation.mutate(session.id)}
                     >
-                      {t('mentor.reject')}
+                      {t('mentor.mark_complete')}
                     </Button>
-                  </>
-                ) : null}
-
-                {session.status === 'CONFIRMED' ? (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    isLoading={completeMutation.isPending && completeMutation.variables === session.id}
-                    onClick={() => completeMutation.mutate(session.id)}
-                  >
-                    {t('mentor.mark_complete')}
-                  </Button>
-                ) : null}
-              </div>
-            </Card>
-          ))}
+                  ) : null}
+                </div>
+              </Card>
+            );
+          })}
 
           <div className="flex justify-end gap-3">
             <Button variant="outline" onClick={prevPage} disabled={page === 0}>

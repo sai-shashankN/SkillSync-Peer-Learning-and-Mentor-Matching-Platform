@@ -4,6 +4,7 @@ import com.skillsync.common.dto.ApiResponse;
 import com.skillsync.common.dto.PagedResponse;
 import com.skillsync.common.exception.BadRequestException;
 import com.skillsync.common.exception.UnauthorizedException;
+import com.skillsync.common.security.InternalServiceAuth;
 import com.skillsync.mentor.dto.AvailabilityResponse;
 import com.skillsync.mentor.dto.MentorApplicationRequest;
 import com.skillsync.mentor.dto.MentorDetailResponse;
@@ -26,6 +27,7 @@ import jakarta.validation.Valid;
 import java.math.BigDecimal;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -35,6 +37,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -47,6 +50,8 @@ public class MentorController {
     private final MentorService mentorService;
     private final AvailabilityService availabilityService;
     private final WaitlistService waitlistService;
+    @Value("${internal.service-token:}")
+    private String internalServiceToken;
 
     @PostMapping("/apply")
     public ResponseEntity<ApiResponse<MentorResponse>> applyAsMentor(
@@ -80,6 +85,16 @@ public class MentorController {
                 RequestHeaderUtils.extractUserName(request)
         );
         return ResponseEntity.ok(ApiResponse.ok("Mentor fetched successfully", response));
+    }
+
+    @GetMapping("/internal/by-user/{userId}")
+    public ResponseEntity<ApiResponse<MentorResponse>> getInternalMentorByUserId(
+            @PathVariable Long userId,
+            @RequestHeader(value = InternalServiceAuth.HEADER_NAME, required = false) String serviceToken
+    ) {
+        InternalServiceAuth.requireValidToken(serviceToken, internalServiceToken);
+        Mentor mentor = mentorService.getMentorByUserId(userId);
+        return ResponseEntity.ok(ApiResponse.ok("Internal mentor fetched successfully", mentorService.toMentorResponse(mentor)));
     }
 
     @GetMapping("/{id}")

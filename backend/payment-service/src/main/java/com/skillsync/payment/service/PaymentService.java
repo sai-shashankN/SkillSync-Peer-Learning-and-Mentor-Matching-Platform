@@ -33,6 +33,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.http.HttpHeaders;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -87,7 +88,7 @@ public class PaymentService {
         Payment payment = Payment.builder()
                 .sessionId(request.getSessionId())
                 .payerId(payerId)
-                .payeeId(session.mentorId())
+                .payeeId(resolvePayeeUserId(session))
                 .amount(normalize(session.amount()))
                 .currency(payPalConfig.getCurrency())
                 .idempotencyKey(normalizedIdempotencyKey)
@@ -150,7 +151,8 @@ public class PaymentService {
     }
 
     @Transactional
-    public void processWebhook(String payload) {
+    public void processWebhook(String payload, HttpHeaders headers) {
+        payPalService.verifyWebhookSignature(payload, headers);
         PaymentWebhookEvent webhookEvent = null;
         try {
             JsonNode root = objectMapper.readTree(payload);
@@ -402,5 +404,9 @@ public class PaymentService {
             return BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
         }
         return new BigDecimal(value).setScale(2, RoundingMode.HALF_UP);
+    }
+
+    private Long resolvePayeeUserId(SessionSnapshot session) {
+        return session.mentorUserId() != null ? session.mentorUserId() : session.mentorId();
     }
 }

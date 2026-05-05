@@ -2,14 +2,13 @@ import api from './api';
 import type { ApiResponse, PagedResponse } from '../types';
 
 export interface AdminUser {
-  id: number;
-  name: string;
-  email: string;
+  userId: number;
+  name?: string | null;
+  email?: string | null;
   roles: string[];
-  status?: string | null;
-  avatarUrl: string | null;
+  isActive: boolean;
+  avatarUrl?: string | null;
   createdAt: string;
-  lastLoginAt: string | null;
 }
 
 export const adminUserService = {

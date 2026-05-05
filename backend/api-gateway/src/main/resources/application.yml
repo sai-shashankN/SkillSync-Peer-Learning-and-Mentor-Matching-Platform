@@ -10,6 +10,12 @@ spring:
       port: 6379
   cloud:
     gateway:
+      default-filters:
+        - name: RequestRateLimiter
+          args:
+            key-resolver: "#{@ipKeyResolver}"
+            redis-rate-limiter.replenishRate: 100
+            redis-rate-limiter.burstCapacity: 200
       routes:
         - id: auth-service
           uri: lb://auth-service

@@ -29,7 +29,7 @@ export default function MentorDashboard() {
     queryFn: async () => {
       const [sessionsResponse, pendingResponse, profileResponse, earningsResponse] = await Promise.all([
         sessionService.getMySessions({ role: 'MENTOR', page: 0, size: 1 }),
-        sessionService.getMySessions({ role: 'MENTOR', status: 'PENDING', page: 0, size: 1 }),
+        sessionService.getMySessions({ role: 'MENTOR', status: 'PAID', page: 0, size: 1 }),
         mentorService.getMyProfile(),
         paymentService.getMyEarnings(),
       ]);
@@ -47,7 +47,7 @@ export default function MentorDashboard() {
     queryKey: ['sessions', 'mentor', 'pending-dashboard'],
     queryFn: async () =>
       (
-        await sessionService.getMySessions({ role: 'MENTOR', status: 'PENDING', page: 0, size: 10 })
+        await sessionService.getMySessions({ role: 'MENTOR', status: 'PAID', page: 0, size: 10 })
       ).data.content,
   });
 
@@ -55,7 +55,7 @@ export default function MentorDashboard() {
     queryKey: ['sessions', 'mentor', 'upcoming-dashboard'],
     queryFn: async () =>
       (
-        await sessionService.getMySessions({ role: 'MENTOR', status: 'UPCOMING', page: 0, size: 3 })
+        await sessionService.getMySessions({ role: 'MENTOR', status: 'ACCEPTED', page: 0, size: 3 })
       ).data.content,
   });
 

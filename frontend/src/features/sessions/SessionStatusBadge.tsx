@@ -22,10 +22,12 @@ function getVariant(status: string): BadgeVariant {
     case 'CANCELLED':
       return 'danger';
     case 'PENDING':
+    case 'PAID':
     case 'PAYMENT_PENDING':
       return 'warning';
     case 'UPCOMING':
     case 'CONFIRMED':
+    case 'ACCEPTED':
     case 'BOOKED':
     case 'SCHEDULED':
       return 'info';

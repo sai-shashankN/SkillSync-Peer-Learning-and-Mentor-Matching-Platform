@@ -113,6 +113,15 @@ export default function AvailabilityManager() {
   }
 
   const updateSlots = (nextSlots: EditableSlot[]) => {
+    if (nextSlots.length === 0) {
+      toast.error(
+        t('mentor.availability_requires_slot', {
+          defaultValue: 'Keep at least one availability slot.',
+        }),
+      );
+      return;
+    }
+
     setSlots(nextSlots);
     saveAvailabilityMutation.mutate(nextSlots);
   };

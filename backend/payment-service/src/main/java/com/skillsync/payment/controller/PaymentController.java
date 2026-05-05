@@ -23,6 +23,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -72,9 +73,10 @@ public class PaymentController {
 
     @PostMapping("/webhooks/paypal")
     public ResponseEntity<ApiResponse<Void>> processWebhook(
+            @RequestHeader HttpHeaders headers,
             @RequestBody String payload
     ) {
-        paymentService.processWebhook(payload);
+        paymentService.processWebhook(payload, headers);
         return ResponseEntity.ok(ApiResponse.ok("Webhook processed successfully", null));
     }
 

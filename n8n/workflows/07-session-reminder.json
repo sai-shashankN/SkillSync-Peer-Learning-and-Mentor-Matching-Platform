@@ -32,7 +32,16 @@
             ],
             "parameters": {
                 "method": "GET",
-                "url": "http://host.docker.internal:8085/sessions/internal/upcoming?withinMinutes=60"
+                "url": "http://host.docker.internal:8085/sessions/internal/upcoming?withinMinutes=60",
+                "sendHeaders": true,
+                "headerParameters": {
+                    "parameters": [
+                        {
+                            "name": "X-Internal-Service-Token",
+                            "value": "={{$env.INTERNAL_SERVICE_TOKEN}}"
+                        }
+                    ]
+                }
             }
         },
         {
@@ -85,7 +94,16 @@
             ],
             "parameters": {
                 "method": "GET",
-                "url": "=http://host.docker.internal:8082/users/internal/{{$json.mentorId}}"
+                "url": "=http://host.docker.internal:8082/users/internal/{{$json.mentorUserId}}",
+                "sendHeaders": true,
+                "headerParameters": {
+                    "parameters": [
+                        {
+                            "name": "X-Internal-Service-Token",
+                            "value": "={{$env.INTERNAL_SERVICE_TOKEN}}"
+                        }
+                    ]
+                }
             }
         },
         {
@@ -99,7 +117,16 @@
             ],
             "parameters": {
                 "method": "GET",
-                "url": "=http://host.docker.internal:8082/users/internal/{{$node['Split In Batches'].json.learnerId}}"
+                "url": "=http://host.docker.internal:8082/users/internal/{{$node['Split In Batches'].json.learnerId}}",
+                "sendHeaders": true,
+                "headerParameters": {
+                    "parameters": [
+                        {
+                            "name": "X-Internal-Service-Token",
+                            "value": "={{$env.INTERNAL_SERVICE_TOKEN}}"
+                        }
+                    ]
+                }
             }
         },
         {

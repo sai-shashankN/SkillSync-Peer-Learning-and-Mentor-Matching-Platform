@@ -12,6 +12,7 @@ import com.skillsync.auth.service.AuthService;
 import com.skillsync.auth.service.OAuth2Service;
 import com.skillsync.common.dto.ApiResponse;
 import com.skillsync.common.exception.BadRequestException;
+import com.skillsync.common.security.InternalServiceAuth;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Value;
@@ -40,17 +41,20 @@ public class AuthController {
     private final OAuth2Service oAuth2Service;
     private final JwtProperties jwtProperties;
     private final boolean refreshCookieSecure;
+    private final String internalServiceToken;
 
     public AuthController(
             AuthService authService,
             OAuth2Service oAuth2Service,
             JwtProperties jwtProperties,
-            @Value("${app.security.refresh-cookie-secure:true}") boolean refreshCookieSecure
+            @Value("${app.security.refresh-cookie-secure:true}") boolean refreshCookieSecure,
+            @Value("${internal.service-token:}") String internalServiceToken
     ) {
         this.authService = authService;
         this.oAuth2Service = oAuth2Service;
         this.jwtProperties = jwtProperties;
         this.refreshCookieSecure = refreshCookieSecure;
+        this.internalServiceToken = internalServiceToken;
     }
 
     @PostMapping("/register")
@@ -160,7 +164,11 @@ public class AuthController {
     }
 
     @GetMapping("/internal/users/{id}")
-    public ResponseEntity<ApiResponse<InternalUserSummaryResponse>> getInternalUserById(@PathVariable Long id) {
+    public ResponseEntity<ApiResponse<InternalUserSummaryResponse>> getInternalUserById(
+            @PathVariable Long id,
+            @RequestHeader(value = InternalServiceAuth.HEADER_NAME, required = false) String serviceToken
+    ) {
+        InternalServiceAuth.requireValidToken(serviceToken, internalServiceToken);
         InternalUserSummaryResponse response = authService.getInternalUserSummary(id);
         return ResponseEntity.ok(ApiResponse.ok("Internal user fetched successfully", response));
     }

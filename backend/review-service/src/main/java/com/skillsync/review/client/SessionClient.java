@@ -3,8 +3,12 @@ package com.skillsync.review.client;
 import com.skillsync.common.dto.ApiResponse;
 import com.skillsync.common.exception.BadRequestException;
 import com.skillsync.common.exception.ResourceNotFoundException;
+import com.skillsync.common.security.InternalServiceAuth;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
@@ -18,15 +22,18 @@ import org.springframework.web.util.UriComponentsBuilder;
 public class SessionClient {
 
     private final RestTemplate restTemplate;
+    @Value("${internal.service-token:}")
+    private String internalServiceToken;
 
     public SessionSnapshot getSession(Long sessionId) {
         String url = "http://session-service/sessions/internal/" + sessionId;
+        HttpHeaders headers = internalHeaders();
 
         try {
             ResponseEntity<ApiResponse<SessionPayload>> response = restTemplate.exchange(
                     url,
                     HttpMethod.GET,
-                    null,
+                    new HttpEntity<>(headers),
                     new ParameterizedTypeReference<>() {
                     }
             );
@@ -39,6 +46,7 @@ public class SessionClient {
             return new SessionSnapshot(
                     payload.getId(),
                     payload.getMentorId(),
+                    payload.getMentorUserId(),
                     payload.getLearnerId(),
                     payload.getSkillId(),
                     payload.getStatus()
@@ -61,7 +69,7 @@ public class SessionClient {
             ResponseEntity<ApiResponse<Long>> response = restTemplate.exchange(
                     url,
                     HttpMethod.GET,
-                    null,
+                    new HttpEntity<>(internalHeaders()),
                     new ParameterizedTypeReference<>() {
                     }
             );
@@ -75,12 +83,19 @@ public class SessionClient {
         }
     }
 
-    public record SessionSnapshot(Long sessionId, Long mentorId, Long learnerId, Long skillId, String status) {
+    public record SessionSnapshot(Long sessionId, Long mentorId, Long mentorUserId, Long learnerId, Long skillId, String status) {
+    }
+
+    private HttpHeaders internalHeaders() {
+        HttpHeaders headers = new HttpHeaders();
+        headers.set(InternalServiceAuth.HEADER_NAME, internalServiceToken);
+        return headers;
     }
 
     private static class SessionPayload {
         private Long id;
         private Long mentorId;
+        private Long mentorUserId;
         private Long learnerId;
         private Long skillId;
         private String status;
@@ -99,6 +114,14 @@ public class SessionClient {
 
         public void setMentorId(Long mentorId) {
             this.mentorId = mentorId;
+        }
+
+        public Long getMentorUserId() {
+            return mentorUserId;
+        }
+
+        public void setMentorUserId(Long mentorUserId) {
+            this.mentorUserId = mentorUserId;
         }
 
         public Long getLearnerId() {
