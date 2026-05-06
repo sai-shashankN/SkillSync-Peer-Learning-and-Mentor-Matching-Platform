@@ -19,7 +19,6 @@ import java.util.Objects;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.CacheEvict;
-import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -65,7 +64,6 @@ public class SkillService {
     }
 
     @Transactional(readOnly = true)
-    @Cacheable("skills")
     public List<SkillResponse> getAllSkills(Integer categoryId, String search) {
         List<Skill> skills;
         String normalizedSearch = StringUtils.hasText(search) ? search.trim() : null;

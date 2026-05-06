@@ -16,4 +16,5 @@ public class PaymentInitiateResponse {
     private BigDecimal amount;
     private String currency;
     private String clientId;
+    private boolean demoBypassEnabled;
 }

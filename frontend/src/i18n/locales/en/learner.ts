@@ -90,6 +90,8 @@ const learnerEn = {
     payment_verifying: 'Verifying PayPal payment...',
     payment_cancelled: 'Payment was cancelled.',
     payment_failed: 'Unable to complete payment.',
+    demo_payment_note: 'Demo payment bypass is enabled. This booking will be confirmed without PayPal.',
+    demo_payment_skipped: 'Demo payment skipped.',
     booking_title: 'Book your session',
     booking_subtitle: 'Choose a date, secure a slot, and complete payment.',
     choose_date: 'Choose a date',

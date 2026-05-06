@@ -33,6 +33,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -54,6 +55,8 @@ public class PaymentService {
     private final EventPublisherService eventPublisherService;
     private final EarningsService earningsService;
     private final ObjectMapper objectMapper;
+    @Value("${payments.demo-bypass-enabled:false}")
+    private boolean demoBypassEnabled;
 
     @Transactional
     public PaymentInitiateResponse initiatePayment(Long payerId, InitiatePaymentRequest request, String idempotencyKey) {
@@ -64,7 +67,9 @@ public class PaymentService {
             if (!existing.getPayerId().equals(payerId)) {
                 throw new ConflictException("Idempotency key is already associated with another payer");
             }
-            if (existing.getStatus() == PaymentStatus.INITIATED || existing.getStatus() == PaymentStatus.AUTHORIZED) {
+            if (existing.getStatus() == PaymentStatus.INITIATED
+                    || existing.getStatus() == PaymentStatus.AUTHORIZED
+                    || (demoBypassEnabled && existing.getStatus() == PaymentStatus.CAPTURED)) {
                 return buildInitiateResponse(existing);
             }
             throw new ConflictException("Payment has already been processed for this idempotency key");
@@ -79,6 +84,10 @@ public class PaymentService {
         }
 
         String receipt = buildReceipt(request.getSessionId(), request.getHoldId(), normalizedIdempotencyKey);
+        if (demoBypassEnabled) {
+            return completeDemoPayment(payerId, session, receipt, normalizedIdempotencyKey);
+        }
+
         PayPalService.PayPalOrderResult order = payPalService.createOrder(
                 session.amount(),
                 payPalConfig.getCurrency(),
@@ -320,7 +329,39 @@ public class PaymentService {
                 .amount(payment.getAmount())
                 .currency(payment.getCurrency())
                 .clientId(payPalService.getClientId())
+                .demoBypassEnabled(demoBypassEnabled && payment.getStatus() == PaymentStatus.CAPTURED)
                 .build();
+    }
+
+    private PaymentInitiateResponse completeDemoPayment(
+            Long payerId,
+            SessionSnapshot session,
+            String receipt,
+            String idempotencyKey
+    ) {
+        String demoOrderId = "DEMO-" + idempotencyKey;
+        Payment payment = Payment.builder()
+                .sessionId(session.id())
+                .payerId(payerId)
+                .payeeId(resolvePayeeUserId(session))
+                .amount(normalize(session.amount()))
+                .currency(payPalConfig.getCurrency())
+                .idempotencyKey(idempotencyKey)
+                .provider("DEMO")
+                .providerOrderId(demoOrderId)
+                .providerPaymentId("DEMO-CAPTURE-" + idempotencyKey)
+                .providerReceipt(receipt)
+                .providerStatus("COMPLETED")
+                .status(PaymentStatus.CAPTURED)
+                .capturedAmount(normalize(session.amount()))
+                .capturedAt(Instant.now())
+                .build();
+
+        Payment savedPayment = paymentRepository.save(payment);
+        sessionClient.markSessionPaid(session.id());
+        earningsService.addPendingEarnings(savedPayment.getPayeeId(), savedPayment.getAmount());
+        eventPublisherService.publishPaymentReceived(savedPayment);
+        return buildInitiateResponse(savedPayment);
     }
 
     private PaymentVerifyResponse buildVerifyResponse(Payment payment) {

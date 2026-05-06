@@ -118,6 +118,27 @@ Wait for: `Started ConfigServerApplication on port 8888`
 
 Verify: http://localhost:8888/auth-service/default should return JSON config.
 
+### Config Server Modes
+
+By default, Config Server runs in local `native` mode and reads from `backend/config-server/src/main/resources/configurations`.
+
+To use a Git-backed repo with local fallback, start it with `dev` or `test` and set the Git repo details first:
+
+```powershell
+$env:SPRING_PROFILES_ACTIVE = "dev"
+
+# Optional for private GitHub repos
+$env:CONFIG_GIT_USERNAME = "<github-username>"
+$env:CONFIG_GIT_PASSWORD = "<github-token-or-password>"
+
+cd backend
+mvn spring-boot:run -pl config-server
+```
+
+The default Git repo for `dev` and `test` is `https://github.com/sai-shashankN/SkillSync-config.git`, and Config Server reads from its `configurations/` folder. Set `CONFIG_GIT_URI` only if you want to override that repo.
+
+Use `test` instead of `dev` for the test profile. In both profiles, the server checks Git first and falls back to the local `configurations` folder if the Git backend is unreachable, misconfigured, or the repo is temporarily unavailable.
+
 ---
 
 ## Step 4 - Start Eureka Server

@@ -147,6 +147,32 @@ Swagger UI is available per Spring service at `/swagger-ui.html` when the servic
 - Zipkin: `http://localhost:9411`
 - Spring Boot metrics: `/actuator/prometheus` on each backend service
 
+## Config Server Profiles
+
+`config-server` defaults to local `native` mode and serves files from `backend/config-server/src/main/resources/configurations`.
+
+Two additional profiles are available:
+
+- `dev`: Git-backed config repo with local native fallback
+- `test`: Git-backed config repo with local native fallback
+
+Use them like this:
+
+```powershell
+$env:SPRING_PROFILES_ACTIVE = "dev"
+
+# Optional for private repos
+$env:CONFIG_GIT_USERNAME = "<github-username>"
+$env:CONFIG_GIT_PASSWORD = "<github-token-or-password>"
+
+cd backend
+mvn spring-boot:run -pl config-server
+```
+
+The default Git repo for `dev` and `test` is `https://github.com/sai-shashankN/SkillSync-config.git`, and Config Server reads from its `configurations/` folder. Set `CONFIG_GIT_URI` only if you want to override that repo.
+
+If the Git repository cannot be reached or fails during refresh, the `dev` and `test` profiles fall back to the bundled local configuration set.
+
 Grafana provisioning includes:
 
 - `SkillSync - Service Health`

@@ -19,5 +19,7 @@ paypal:
   base-url: ${PAYPAL_BASE_URL:https://api-m.sandbox.paypal.com}
   currency: ${PAYPAL_CURRENCY:USD}
   brand-name: ${PAYPAL_BRAND_NAME:SkillSync}
+payments:
+  demo-bypass-enabled: ${PAYMENT_DEMO_BYPASS_ENABLED:false}
 internal:
   service-token: ${INTERNAL_SERVICE_TOKEN}

@@ -11,6 +11,7 @@ export interface PaymentInitiateResponse {
   amount: number;
   currency: string;
   clientId: string;
+  demoBypassEnabled?: boolean;
 }
 
 export interface VerifyPaymentRequest {
